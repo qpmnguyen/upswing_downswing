@@ -13,27 +13,46 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+# Setting up  
+```{r, message=FALSE}
 library(here)
 library(covidcast)
 library(epiprocess)
+library(tidyverse)
+library(ggsci)
 here::i_am(path = "notebooks/01-latest-upswings.Rmd")
+source(here("R", "utils.R"))
+(settings <- get_settings())
+```
+# Load data 
+```{r load_data, cache=TRUE, message=TRUE}
+cases <- covidcast_signal(data_source = "jhu-csse", 
+                          signal = "confirmed_7dav_incidence_num", 
+                          start_day = settings$start_date, 
+                          end_day = settings$end_date, 
+                          geo_type = "state",
+                          geo_values = c("ma"),
+                          as_of = Sys.Date())
+
+(df <- as_epi_df(cases, geo_type = "state", time_type = "day", as_of = max(cases$issue)) %>% 
+    select(geo_value, time_value, inc_cases = value))
+
 ```
 
-```{r}
-thresh <- list(
-    h = 4,
-    upswing_thresh = 0.5,
-    min_thresh = 20
-)
+# Compute upswings  
 
+```{r compute_upswing}
+rel_increase <- function(x, ...){
+    (1/x$inc_cases[1])*(x$inc_cases[2] - x$inc_cases[1])
+}
 
+df <- df %>% epi_slide(rel_increase, n = 2, new_col_name = "rel_increase") %>% 
+    mutate(upswing = if_else(rel_increase >= settings$upswing_thresh & inc_cases >= settings$min_thresh, 1, 0))
 
-
-
+ggplot(df, aes(x = time_value, y = inc_cases, col = as.factor(upswing))) + geom_point() + theme_bw() +
+    scale_color_aaas() + 
+    labs(x = "Date", y = "Incident Cases", col = "Upswing")
 ```
-
-
 
 
 
