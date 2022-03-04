@@ -1,0 +1,36 @@
+---
+title: "Latest update for upswings"
+author: "Quang Nguyen"
+date: "2022-03-03"
+output:
+    html_document:
+        toc: true
+        toc_float: true
+        code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(here)
+library(covidcast)
+library(epiprocess)
+here::i_am(path = "notebooks/01-latest-upswings.Rmd")
+```
+
+```{r}
+thresh <- list(
+    h = 4,
+    upswing_thresh = 0.5,
+    min_thresh = 20
+)
+
+
+```
+
+
+
+
+
