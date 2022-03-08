@@ -22,6 +22,7 @@ library(epiprocess)
 library(tidyverse)
 library(ggsci)
 library(tsibble)
+library(patchwork)
 here::i_am(path = "notebooks/01-latest-upswings.Rmd")
 source(here("R", "utils.R"))
 (settings <- get_settings(start_date = "2021-01-01", end_date = "2021-12-31"))
@@ -60,14 +61,28 @@ where $R_{T+h/2}^{h/2}$ is the **the actual $h/2$-epiweek-incidence relative cha
 Using the `rel_change` option in the `growth_rate` function from `epiprocess` with `h` being the set threshold   
 
 ```{r compute_upswing, eval=FALSE}
-df %>% mutate(c_gr_raw = growth_rate(time_value, cases, method = "rel_change", h = settings$h * 2), 
-              c_gr = c_gr_raw * settings$h * 2)
+test_df <- df %>% mutate(c_gr_raw = growth_rate(time_value, cases, method = "rel_change", h = 2), 
+                         c_gr = c_gr_raw * 2) %>%  
+    mutate(
+        prev_cumulative = lag(cases, order_by = time_value, n = 7 * h),
+        h_ew_inc = cases - prev_cumulative,
+        prev_h_ew_inc = lag(h_ew_inc, order_by = time_value, n = 7 * h),
+        rel_change = (h_ew_inc - prev_h_ew_inc) / prev_h_ew_inc,
+        surge = case_when(rel_change >= surge_thresh & h_ew_inc >= min_thresh * h ~ TRUE,
+                          rel_change < surge_thresh & h_ew_inc >= min_thresh * h ~ FALSE,
+                          h_ew_inc < min_thresh * h ~ NA),
+        prev_surge = lag(surge, order_by = time_value, n = 7 * h),
+        cumulative = cases,
+        inc = cases - lag(cases, order_by = time_value, n = 7),
+        target_end_date = time_value
+    )
+
+p1 <- test_df %>% ggplot(aes(x = time_value, y = c_gr_raw)) + geom_point() 
+
+p2 <- test_df %>% ggplot(aes(x = time_value, y = c_gr)) + geom_point()
 
 
-ggplot(df, aes(x = time_value, y = cases))+ 
-           geom_point(aes(col = as.factor(upswing))) + theme_bw() +
-    scale_color_aaas() + geom_line() +
-    labs(x = "Epiweek", y = "Incident Cases (by Week)", col = "Upswing", title = "Year: 2021 in MA")
+p1 + p2
 ```
 
 
