@@ -1,5 +1,5 @@
 ---
-title: "Latest update for upswings"
+title: "Surge calculation using epiprocess"
 author: "Quang Nguyen"
 date: "`r format(Sys.Date())`"
 output:
@@ -14,7 +14,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Setting up  
+# Setting up
+
 ```{r, message=FALSE}
 library(here)
 library(covidcast)
@@ -27,9 +28,11 @@ here::i_am(path = "notebooks/01-latest-upswings.Rmd")
 source(here("R", "utils.R"))
 (settings <- get_settings(start_date = "2021-01-01", end_date = "2022-03-01"))
 ```
-# Load data   
 
-For cumulative data, using confirmed cumulative numbers and aggregate by epiweek. For incidence data, using the 7-day average numbers.  
+# Load data
+
+For cumulative data, using confirmed cumulative numbers and aggregate by epiweek. For incidence data, using the 7-day average numbers.
+
 ```{r load_data, cache=TRUE, message=TRUE}
 print("Cumulative data")
 (df_cum <- covidcast_signal(data_source = "jhu-csse", 
@@ -49,7 +52,7 @@ print("Cumulative data")
 
 print("Incidence data")
 (df_inc <- covidcast_signal(data_source = "jhu-csse", 
-                          signal = "confirmed_7dav_incidence_num", 
+                          signal = "confirmed_incidence_num", 
                           start_day = settings$start_date, 
                           end_day = settings$end_date, 
                           geo_type = "state",
@@ -68,19 +71,20 @@ print("Incidence data")
 
 ```
 
-# Compute upswings on real data  
 
-The `rel_change` method in the `growth_rate` function from `epiprocess` defines relative change at focal time $T$ with bandwith $h$ as: 
+# Compute upswings on real data
 
-$$\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h/2)^{-1}\left(\sum_{t = T+1}^{T + h/2} Y_t - \sum_{t = T+1-h/2}^{T} Y_t\right)}{(h/2)^{-1}\sum_{t = T+1-h/2}^{T} Y_t}\right) = \frac{1}{h} R^{h/2}_{T + h/2}$$
+The `rel_change` method in the `growth_rate` function from `epiprocess` defines relative change at focal time $T$ with bandwith $h$ as:
 
-where $R_{T+h/2}^{h/2}$ is the **the actual $h/2$-epiweek-incidence relative change** as defined in notebook 7 on computing upswings on incidence data. Using the `rel_change` option in the `growth_rate` function from `epiprocess` with bandwidth being `2*h`.    
+$$\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) = \frac{1}{h} R^{h}_{T + h}$$
+
+where $R_{T+h}^{h}$ is the **the actual** $h$-epiweek-incidence relative change as defined in notebook 7 on computing upswings on incidence data. Using the `rel_change` option in the `growth_rate` function from `epiprocess` with bandwidth being `h`.
 
 ```{r surge_inc}
 
 surge_inc <- df_inc %>% mutate(growth_raw = growth_rate(time_value, cases, method = "rel_change", 
-                                                        h = (settings$h * 2)), 
-                  growth_adj = growth_raw * settings$h * 2) %>%
+                                                        h = settings$h), 
+                  growth_adj = growth_raw * settings$h) %>%
     mutate(surge_raw = case_when(
         growth_raw >= settings$upswing_thresh & cases >= settings$min_thresh * settings$h ~ TRUE, 
         growth_raw < settings$upswing_thresh & cases >= settings$min_thresh * settings$h ~ FALSE,
@@ -103,40 +107,35 @@ p2 <- ggplot(surge_inc, aes(x = time_value, y = cases)) + geom_point(aes(col = s
 
 surge_cum <- df_cum %>% mutate(prev_cumulative = lag(cases, order_by = time_value, n = settings$h), 
     h_ew_inc = cases - prev_cumulative, 
-    prev_h_ew_inc = lag(h_ew_inc, order_by = time_value, n = settings$h * 7), 
+    prev_h_ew_inc = lag(h_ew_inc, order_by = time_value, n = settings$h), 
     rel_change = (h_ew_inc - prev_h_ew_inc) / prev_h_ew_inc, 
     surge = case_when(
         rel_change >= settings$upswing_thresh & h_ew_inc >= settings$min_thresh * settings$h ~ TRUE,
         rel_change < settings$upswing_thresh & h_ew_inc >= settings$min_thresh * settings$h ~ FALSE,
         h_ew_inc < settings$min_thresh * settings$h ~ NA),
-    prev_surge = lag(surge, order_by = time_value, n = settings$h * 7), 
+    prev_surge = lag(surge, order_by = time_value, n = settings$h), 
     cumulative = cases,
-    inc = cases - lag(cases, order_by = time_value, n = 7),
+    inc = cases - lag(cases, order_by = time_value),
     target_end_date = time_value)
 
 p3 <- surge_cum %>% 
     ggplot(aes(x = time_value, y = inc, col = surge)) + geom_point() + 
     theme_bw() + labs(x = "Epiweek", y = "Incidence cases", title = "Surge calculated using cumulative data") 
-    
+
 p1 / p2 / p3    
 
 ```
 
-# Basic evaluation for the ensemble forecaster  
 
-```{r load_forecaster, eval=FALSE}
-library(covidHubUtils)
-dates <- seq(ymd(settings$start_date), 
-             ymd("2022-02-01"), by = 7)
-forecast_case <- load_forecasts(
-    models = "COVIDhub-ensemble", 
-    dates = "2022-03-01", 
-    locations = "Massachusetts", 
-    types = "point", 
-    targets = "1 wk ahead inc case"
-)
+Unfortunately, using the cumulative formulation, the real values were lagged by a factor of `h`.  
 
+```{r}
+head(tibble(
+    epiprocess = surge_inc$growth_adj,
+    reference = surge_cum$rel_change
+), n = 10)
 ```
+However, once corrected by phase, the results seems to be identical between using `growth_rate` and the original cumulative code.  
 
 
 

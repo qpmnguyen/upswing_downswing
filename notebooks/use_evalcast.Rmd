@@ -1,0 +1,48 @@
+---
+title: "Testing things"
+author: "Quang Nguyen"
+date: '2022-03-21'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(evalcast)
+library(lubridate)
+library(epiprocess)
+library(tidyverse)
+library(covidcast)
+```
+
+```{r}
+h <- 4
+surge_thresh <- 0.5   # define a surge as relative change >= this
+min_thresh <- 20  
+dates <- seq(ymd("2020-06-22"), 
+             ymd("2021-09-01"), by = 7)
+pred <- get_zoltar_predictions("COVIDhub-ensemble",
+                               forecast_dates = dates,
+                               forecast_type = "point",
+                               ahead = 1:h,
+                               incidence_period = "epiweek",
+                               signal = "deaths_incidence_num")
+end_dates <- pred %>% pull(target_end_date) %>% unique()
+actuals0 <- covidcast_signal(
+  data_source = "jhu-csse",
+  signal = "deaths_cumulative_num", # keeping this cumulative on purpose
+  start_day = min(end_dates) - 2 * h * 7, end_day = max(end_dates),
+  geo_type = "state"
+  )
+```
+```{r}
+df <- actuals0 %>% as_epi_df()
+
+
+
+```
+
