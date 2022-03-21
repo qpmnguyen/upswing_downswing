@@ -3,6 +3,7 @@ title: "Surge calculation using epiprocess"
 author: "Quang Nguyen"
 date: "`r format(Sys.Date())`"
 output:
+    github_document: default
     html_document:
         keep_md: yes
         toc: true

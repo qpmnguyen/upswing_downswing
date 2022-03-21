@@ -1,21 +1,11 @@
----
-title: "Figuring out upswings"
-author: "Quang Nguyen"
-date: "2022-03-21"
-output:
-    html_document:
-        keep_md: yes
-        toc: true
-        toc_float: true
-        code_folding: hide
----
-
-
+Surge calculation using epiprocess
+================
+Quang Nguyen
+2022-03-21
 
 # Setting up
 
-
-```r
+``` r
 library(here)
 library(covidcast)
 library(epiprocess)
@@ -28,37 +18,33 @@ source(here("R", "utils.R"))
 (settings <- get_settings(start_date = "2021-01-01", end_date = "2022-03-01"))
 ```
 
-```
-## $h
-## [1] 4
-## 
-## $upswing_thresh
-## [1] 0.5
-## 
-## $min_thresh
-## [1] 20
-## 
-## $start_date
-## [1] "2021-01-01"
-## 
-## $end_date
-## [1] "2022-03-01"
-```
+    ## $h
+    ## [1] 4
+    ## 
+    ## $upswing_thresh
+    ## [1] 0.5
+    ## 
+    ## $min_thresh
+    ## [1] 20
+    ## 
+    ## $start_date
+    ## [1] "2021-01-01"
+    ## 
+    ## $end_date
+    ## [1] "2022-03-01"
 
 # Load data
 
-For cumulative data, using confirmed cumulative numbers and aggregate by epiweek. For incidence data, using the 7-day average numbers.
+For cumulative data, using confirmed cumulative numbers and aggregate by
+epiweek. For incidence data, using the 7-day average numbers.
 
-
-```r
+``` r
 print("Cumulative data")
 ```
 
-```
-## [1] "Cumulative data"
-```
+    ## [1] "Cumulative data"
 
-```r
+``` r
 (df_cum <- covidcast_signal(data_source = "jhu-csse", 
                           signal = "confirmed_cumulative_num", 
                           start_day = settings$start_date, 
@@ -75,41 +61,35 @@ print("Cumulative data")
         as_epi_df(geo_type = "state", time_type = "week"))
 ```
 
-```
-## Fetched day 2021-01-01 to 2022-03-01: num_entries = 425
-```
+    ## Fetched day 2021-01-01 to 2022-03-01: num_entries = 425
 
-```
-## An `epi_df` object, with metadata:
-## * geo_type  = state
-## * time_type = week
-## * as_of     = 2022-03-21 10:17:18
-## 
-## # A tibble: 62 × 3
-##    geo_value time_value  cases
-##  * <chr>         <week>  <dbl>
-##  1 ma          2020 W53 384181
-##  2 ma          2021 W01 427135
-##  3 ma          2021 W02 465726
-##  4 ma          2021 W03 496093
-##  5 ma          2021 W04 521360
-##  6 ma          2021 W05 540827
-##  7 ma          2021 W06 555895
-##  8 ma          2021 W07 567764
-##  9 ma          2021 W08 579680
-## 10 ma          2021 W09 589931
-## # … with 52 more rows
-```
+    ## An `epi_df` object, with metadata:
+    ## * geo_type  = state
+    ## * time_type = week
+    ## * as_of     = 2022-03-21 12:51:37
+    ## 
+    ## # A tibble: 62 × 3
+    ##    geo_value time_value  cases
+    ##  * <chr>         <week>  <dbl>
+    ##  1 ma          2020 W53 384181
+    ##  2 ma          2021 W01 427135
+    ##  3 ma          2021 W02 465726
+    ##  4 ma          2021 W03 496093
+    ##  5 ma          2021 W04 521360
+    ##  6 ma          2021 W05 540827
+    ##  7 ma          2021 W06 555895
+    ##  8 ma          2021 W07 567764
+    ##  9 ma          2021 W08 579680
+    ## 10 ma          2021 W09 589931
+    ## # … with 52 more rows
 
-```r
+``` r
 print("Incidence data")
 ```
 
-```
-## [1] "Incidence data"
-```
+    ## [1] "Incidence data"
 
-```r
+``` r
 (df_inc <- covidcast_signal(data_source = "jhu-csse", 
                           signal = "confirmed_incidence_num", 
                           start_day = settings$start_date, 
@@ -128,43 +108,48 @@ print("Incidence data")
 )
 ```
 
-```
-## Fetched day 2021-01-01 to 2022-03-01: num_entries = 425
-```
+    ## Fetched day 2021-01-01 to 2022-03-01: num_entries = 425
 
-```
-## An `epi_df` object, with metadata:
-## * geo_type  = state
-## * time_type = week
-## * as_of     = 2022-03-21 10:17:19
-## 
-## # A tibble: 62 × 3
-##    geo_value time_value cases
-##  * <chr>         <week> <dbl>
-##  1 ma          2020 W53  9003
-##  2 ma          2021 W01 42954
-##  3 ma          2021 W02 38591
-##  4 ma          2021 W03 30367
-##  5 ma          2021 W04 25267
-##  6 ma          2021 W05 19467
-##  7 ma          2021 W06 15068
-##  8 ma          2021 W07 11869
-##  9 ma          2021 W08 11916
-## 10 ma          2021 W09 10251
-## # … with 52 more rows
-```
-
+    ## An `epi_df` object, with metadata:
+    ## * geo_type  = state
+    ## * time_type = week
+    ## * as_of     = 2022-03-21 12:51:38
+    ## 
+    ## # A tibble: 62 × 3
+    ##    geo_value time_value cases
+    ##  * <chr>         <week> <dbl>
+    ##  1 ma          2020 W53  9003
+    ##  2 ma          2021 W01 42954
+    ##  3 ma          2021 W02 38591
+    ##  4 ma          2021 W03 30367
+    ##  5 ma          2021 W04 25267
+    ##  6 ma          2021 W05 19467
+    ##  7 ma          2021 W06 15068
+    ##  8 ma          2021 W07 11869
+    ##  9 ma          2021 W08 11916
+    ## 10 ma          2021 W09 10251
+    ## # … with 52 more rows
 
 # Compute upswings on real data
 
-The `rel_change` method in the `growth_rate` function from `epiprocess` defines relative change at focal time $T$ with bandwith $h$ as:
+The `rel_change` method in the `growth_rate` function from `epiprocess`
+defines relative change at focal time
+![T](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;T "T")
+with bandwith
+![h](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;h "h")
+as:
 
-$$\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) = \frac{1}{h} R^{h}_{T + h}$$
+![\\frac{1}{h} \* \\left(\\frac{\\bar{B}}{\\bar{A}} - 1\\right) = \\frac{1}{h} \* \\left(\\frac{\\bar{B} - \\bar{A}}{\\bar{A}}\\right) = \\\\ \\frac{1}{h} \* \\left(\\frac{(h)^{-1}\\left(\\sum\_{t = T+1}^{T + h} Y_t - \\sum\_{t = T+1-h}^{T} Y_t\\right)}{(h)^{-1}\\sum\_{t = T+1-h}^{T} Y_t}\\right) = \\frac{1}{h} R^{h}\_{T + h}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Cfrac%7B1%7D%7Bh%7D%20%2A%20%5Cleft%28%5Cfrac%7B%5Cbar%7BB%7D%7D%7B%5Cbar%7BA%7D%7D%20-%201%5Cright%29%20%3D%20%5Cfrac%7B1%7D%7Bh%7D%20%2A%20%5Cleft%28%5Cfrac%7B%5Cbar%7BB%7D%20-%20%5Cbar%7BA%7D%7D%7B%5Cbar%7BA%7D%7D%5Cright%29%20%3D%20%5C%5C%20%5Cfrac%7B1%7D%7Bh%7D%20%2A%20%5Cleft%28%5Cfrac%7B%28h%29%5E%7B-1%7D%5Cleft%28%5Csum_%7Bt%20%3D%20T%2B1%7D%5E%7BT%20%2B%20h%7D%20Y_t%20-%20%5Csum_%7Bt%20%3D%20T%2B1-h%7D%5E%7BT%7D%20Y_t%5Cright%29%7D%7B%28h%29%5E%7B-1%7D%5Csum_%7Bt%20%3D%20T%2B1-h%7D%5E%7BT%7D%20Y_t%7D%5Cright%29%20%3D%20%5Cfrac%7B1%7D%7Bh%7D%20R%5E%7Bh%7D_%7BT%20%2B%20h%7D "\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) = \frac{1}{h} R^{h}_{T + h}")
 
-where $R_{T+h}^{h}$ is the **the actual** $h$-epiweek-incidence relative change as defined in notebook 7 on computing upswings on incidence data. Using the `rel_change` option in the `growth_rate` function from `epiprocess` with bandwidth being `h`.
+where
+![R\_{T+h}^{h}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;R_%7BT%2Bh%7D%5E%7Bh%7D "R_{T+h}^{h}")
+is the **the actual**
+![h](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;h "h")-epiweek-incidence
+relative change as defined in notebook 7 on computing upswings on
+incidence data. Using the `rel_change` option in the `growth_rate`
+function from `epiprocess` with bandwidth being `h`.
 
-
-```r
+``` r
 surge_inc <- df_inc %>% mutate(growth_raw = growth_rate(time_value, cases, method = "rel_change", 
                                                         h = settings$h), 
                   growth_adj = growth_raw * settings$h) %>%
@@ -186,8 +171,7 @@ p2 <- ggplot(surge_inc, aes(x = time_value, y = cases)) + geom_point(aes(col = s
     labs(x = "Epiweek", y = "Incident cases", col = "Surge", title = "growth_rate multiplied by bandwith")
 ```
 
-
-```r
+``` r
 surge_cum <- df_cum %>% mutate(prev_cumulative = lag(cases, order_by = time_value, n = settings$h), 
     h_ew_inc = cases - prev_cumulative, 
     prev_h_ew_inc = lag(h_ew_inc, order_by = time_value, n = settings$h), 
@@ -208,40 +192,33 @@ p3 <- surge_cum %>%
 p1 / p2 / p3    
 ```
 
-```
-## Warning: Removed 1 rows containing missing values (geom_point).
-```
+    ## Warning: Removed 1 rows containing missing values (geom_point).
 
-![](01-latest-upswings_files/figure-html/surge_cum-1.png)<!-- -->
+![](01-latest-upswings_files/figure-gfm/surge_cum-1.png)<!-- -->
 
+Unfortunately, using the cumulative formulation, the real values were
+lagged by a factor of `h`.
 
-Unfortunately, using the cumulative formulation, the real values were lagged by a factor of `h`.  
-
-
-```r
+``` r
 head(tibble(
     epiprocess = surge_inc$growth_adj,
     reference = surge_cum$rel_change
 ), n = 10)
 ```
 
-```
-## # A tibble: 10 × 2
-##    epiprocess reference
-##         <dbl>     <dbl>
-##  1     4.49      NA    
-##  2     0.125     NA    
-##  3    -0.289     NA    
-##  4    -0.407     NA    
-##  5    -0.575     NA    
-##  6    -0.568     NA    
-##  7    -0.504     NA    
-##  8    -0.371     NA    
-##  9    -0.179     -0.575
-## 10     0.0855    -0.568
-```
-However, once corrected by phase, the results seems to be identical between using `growth_rate` and the original cumulative code.  
+    ## # A tibble: 10 × 2
+    ##    epiprocess reference
+    ##         <dbl>     <dbl>
+    ##  1     4.49      NA    
+    ##  2     0.125     NA    
+    ##  3    -0.289     NA    
+    ##  4    -0.407     NA    
+    ##  5    -0.575     NA    
+    ##  6    -0.568     NA    
+    ##  7    -0.504     NA    
+    ##  8    -0.371     NA    
+    ##  9    -0.179     -0.575
+    ## 10     0.0855    -0.568
 
-
-
-
+However, once corrected by phase, the results seems to be identical
+between using `growth_rate` and the original cumulative code.
