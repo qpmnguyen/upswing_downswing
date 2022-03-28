@@ -27,14 +27,25 @@ library(tsibble)
 library(patchwork)
 here::i_am(path = "notebooks/02-upswing-CDC.Rmd")
 source(here("R", "utils.R"))
+# (settings <- get_settings(start_date = "2020-06-01", end_date = "2022-03-01"))
+```
 
-start_date <- "2020-09-01"
-end_date <- "2021-04-02"
+Loading CDC Rt estimates  
+
+```{r cdc_load}
+cdc_rt <- read_csv(file = here("data", "cdc_rt.csv")) %>% select(-1)
+cdc_gr <- read_csv(file = here("data", "cdc_gr.csv")) %>% select(-1)
+
+cdc_rt
+start_date <- as.character(min(cdc_rt$date))
+end_date <- as.character(max(cdc_rt$date))
 h <- 4
 surge_thresh <- 0.5
 min_inc <- 20
-#(settings <- get_settings(start_date = "2020-06-01", end_date = "2022-03-01"))
+
 ```
+
+
 
 ```{r}
 
@@ -135,5 +146,5 @@ ggplot(df, aes(x = time_value, y = cases)) +
 Reference image from CDC  
 
 ```{r}
-knitr::include_graphics(path = here("imgs", "cdc_ref_ma.png"))
+knitr::include_graphics(here("imgs", "cdc_ref_ma.png"))
 ```

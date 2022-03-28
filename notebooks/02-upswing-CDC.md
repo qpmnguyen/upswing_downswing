@@ -15,20 +15,77 @@ library(tsibble)
 library(patchwork)
 here::i_am(path = "notebooks/02-upswing-CDC.Rmd")
 source(here("R", "utils.R"))
+#(settings <- get_settings(start_date = "2020-06-01", end_date = "2022-03-01"))
+```
 
-start_date <- "2020-09-01"
-end_date <- "2021-04-02"
+Loading CDC Rt estimates
+
+``` r
+cdc_rt <- read_csv(file = here("data", "cdc_rt.csv")) %>% select(-1)
+```
+
+    ## New names:
+    ## * `` -> ...1
+
+    ## Rows: 48106 Columns: 15
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr   (3): state, type, version
+    ## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, l...
+    ## lgl   (1): strat
+    ## date  (1): date
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
+cdc_gr <- read_csv(file = here("data", "cdc_gr.csv")) %>% select(-1)
+```
+
+    ## New names:
+    ## * `` -> ...1
+    ## Rows: 42700 Columns: 15── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr   (3): state, type, version
+    ## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, l...
+    ## lgl   (1): strat
+    ## date  (1): date
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
+cdc_rt
+```
+
+    ## # A tibble: 48,106 × 14
+    ##    state date       type  median  mean    sd lower_20 upper_20 lower_50 upper_50
+    ##    <chr> <date>     <chr>  <dbl> <dbl> <dbl>    <dbl>    <dbl>    <dbl>    <dbl>
+    ##  1 Alab… 2020-08-10 esti…   0.96  0.96  0.02     0.96     0.97     0.95     0.97
+    ##  2 Alab… 2020-08-11 esti…   0.96  0.96  0.02     0.96     0.97     0.95     0.97
+    ##  3 Alab… 2020-08-12 esti…   0.96  0.96  0.02     0.96     0.97     0.95     0.97
+    ##  4 Alab… 2020-08-13 esti…   0.96  0.96  0.02     0.96     0.97     0.95     0.97
+    ##  5 Alab… 2020-08-14 esti…   0.96  0.96  0.02     0.96     0.97     0.95     0.97
+    ##  6 Alab… 2020-08-15 esti…   0.96  0.97  0.02     0.96     0.97     0.95     0.98
+    ##  7 Alab… 2020-08-16 esti…   0.96  0.97  0.02     0.96     0.97     0.95     0.98
+    ##  8 Alab… 2020-08-17 esti…   0.97  0.97  0.02     0.96     0.97     0.95     0.98
+    ##  9 Alab… 2020-08-18 esti…   0.97  0.97  0.02     0.96     0.97     0.96     0.98
+    ## 10 Alab… 2020-08-19 esti…   0.97  0.97  0.02     0.96     0.97     0.96     0.98
+    ## # … with 48,096 more rows, and 4 more variables: lower_90 <dbl>,
+    ## #   upper_90 <dbl>, version <chr>, strat <lgl>
+
+``` r
+start_date <- as.character(min(cdc_rt$date))
+end_date <- as.character(max(cdc_rt$date))
 h <- 4
 surge_thresh <- 0.5
 min_inc <- 20
-#(settings <- get_settings(start_date = "2020-06-01", end_date = "2022-03-01"))
 ```
 
 ``` r
 print(paste("Computing surge data for state of MA from", start_date, "to", end_date))
 ```
 
-    ## [1] "Computing surge data for state of MA from 2020-09-01 to 2021-04-02"
+    ## [1] "Computing surge data for state of MA from 2020-08-10 to 2021-06-14"
 
 ``` r
 df <- covidcast_signal(data_source = "jhu-csse", 
@@ -47,7 +104,7 @@ df <- covidcast_signal(data_source = "jhu-csse",
         as_epi_df(geo_type = "state", time_type = "week")
 ```
 
-    ## Fetched day 2020-09-01 to 2021-04-02: num_entries = 214
+    ## Fetched day 2020-08-10 to 2021-06-14: num_entries = 309
 
 ## Surge/Downswing computation
 
@@ -130,7 +187,7 @@ ggplot(df, aes(x = time_value, y = cases)) +
 Reference image from CDC
 
 ``` r
-knitr::include_graphics(path = here("imgs", "cdc_ref_ma.png"))
+knitr::include_graphics(here("imgs", "cdc_ref_ma.png"))
 ```
 
 ![](/Users/quangnguyen/projects/upswing_downswing/imgs/cdc_ref_ma.png)<!-- -->
