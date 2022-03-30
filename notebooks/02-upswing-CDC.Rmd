@@ -36,12 +36,26 @@ Loading CDC Rt estimates
 cdc_rt <- read_csv(file = here("data", "cdc_rt.csv")) %>% select(-1)
 cdc_gr <- read_csv(file = here("data", "cdc_gr.csv")) %>% select(-1)
 
-cdc_rt
 start_date <- as.character(min(cdc_rt$date))
 end_date <- as.character(max(cdc_rt$date))
 h <- 4
 surge_thresh <- 0.5
 min_inc <- 20
+
+
+cdc_rt %>% 
+    filter(version == "v254") %>%
+    mutate(time_value = yearweek(date)) %>% 
+    rename("geo_value" = state) %>% 
+    group_by(geo_value, time_value) %>% 
+    add_tally(name = "n") %>% 
+    summarise(rt = mean(mean), sd = sqrt(sum(sd^2) * 1/n))
+
+ggplot(cdc_rt %>% filter(geo_value == "Alabama"), 
+       aes(x = time_value, y = rt)) + 
+    ylim(c(0.7,1.4)) +
+    geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.5) + 
+    geom_point(aes(col = status), size = 5) + geom_line()
 
 ```
 
