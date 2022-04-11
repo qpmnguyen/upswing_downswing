@@ -3,12 +3,12 @@ title: "Comparing surge definition to CDC"
 author: "Quang Nguyen"
 date: "Last compiled on `r format(Sys.time(), '%Y-%m-%d')`"
 output: 
+    github_document: default
     html_document:
         keep_md: yes
         toc: true
         toc_float: true
         code_folding: hide
-    github_document: default
 ---
 
 ```{r setup, include=FALSE}
