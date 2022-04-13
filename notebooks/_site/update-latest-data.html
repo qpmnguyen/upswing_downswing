@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Quang Nguyen" />
+
+<meta name="date" content="2022-04-13" />
+
+<title>Surge calculation using epiprocess</title>
+
+<script src="site_libs/header-attrs-2.12/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Project Website</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Analyses
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="upswing-CDC.html">Upswings</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Surge calculation using epiprocess</h1>
+<h4 class="author">Quang Nguyen</h4>
+<h4 class="date">2022-04-13</h4>
+
+</div>
+
+
+<div id="setting-up" class="section level1">
+<h1>Setting up</h1>
+<pre class="r"><code>library(here)
+library(covidcast)
+library(epiprocess)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(patchwork)
+here::i_am(path = &quot;notebooks/update-latest-data.Rmd&quot;)
+source(here(&quot;R&quot;, &quot;utils.R&quot;))
+(settings &lt;- get_settings(start_date = &quot;2021-01-01&quot;, end_date = &quot;2022-03-01&quot;))</code></pre>
+<pre><code>## $h
+## [1] 4
+## 
+## $upswing_thresh
+## [1] 0.5
+## 
+## $min_thresh
+## [1] 20
+## 
+## $start_date
+## [1] &quot;2021-01-01&quot;
+## 
+## $end_date
+## [1] &quot;2022-03-01&quot;</code></pre>
+</div>
+<div id="load-data" class="section level1">
+<h1>Load data</h1>
+<p>For cumulative data, using confirmed cumulative numbers and aggregate
+by epiweek. For incidence data, using the 7-day average numbers.</p>
+<pre class="r"><code>print(&quot;Cumulative data&quot;)</code></pre>
+<pre><code>## [1] &quot;Cumulative data&quot;</code></pre>
+<pre class="r"><code>(df_cum &lt;- covidcast_signal(data_source = &quot;jhu-csse&quot;, 
+                          signal = &quot;confirmed_cumulative_num&quot;, 
+                          start_day = settings$start_date, 
+                          end_day = settings$end_date, 
+                          geo_type = &quot;state&quot;,
+                          geo_values = c(&quot;ma&quot;),
+                          as_of = Sys.Date()) %&gt;% 
+        as_epi_df(geo_type = &quot;state&quot;, time_type = &quot;day&quot;, as_of = max(.$issue)) %&gt;%
+        select(geo_value, time_value, cases = value) %&gt;% as_tsibble() %&gt;% 
+        index_by(epiweek = ~yearweek(., week_start = 7)) %&gt;% 
+        group_by(geo_value) %&gt;% 
+        summarize(cases = max(cases)) %&gt;% ungroup() %&gt;% 
+        as_tibble() %&gt;% dplyr::rename(time_value = epiweek) %&gt;% 
+        as_epi_df(geo_type = &quot;state&quot;, time_type = &quot;week&quot;))</code></pre>
+<pre><code>## Fetched day 2021-01-01 to 2022-03-01: num_entries = 425</code></pre>
+<pre><code>## An `epi_df` object, with metadata:
+## * geo_type  = state
+## * time_type = week
+## * as_of     = 2022-04-13 09:37:22
+## 
+## # A tibble: 62 × 3
+##    geo_value time_value  cases
+##  * &lt;chr&gt;         &lt;week&gt;  &lt;dbl&gt;
+##  1 ma          2020 W53 384181
+##  2 ma          2021 W01 427135
+##  3 ma          2021 W02 465726
+##  4 ma          2021 W03 496093
+##  5 ma          2021 W04 521360
+##  6 ma          2021 W05 540827
+##  7 ma          2021 W06 555895
+##  8 ma          2021 W07 567764
+##  9 ma          2021 W08 579680
+## 10 ma          2021 W09 589931
+## # … with 52 more rows</code></pre>
+<pre class="r"><code>print(&quot;Incidence data&quot;)</code></pre>
+<pre><code>## [1] &quot;Incidence data&quot;</code></pre>
+<pre class="r"><code>(df_inc &lt;- covidcast_signal(data_source = &quot;jhu-csse&quot;, 
+                          signal = &quot;confirmed_incidence_num&quot;, 
+                          start_day = settings$start_date, 
+                          end_day = settings$end_date, 
+                          geo_type = &quot;state&quot;,
+                          geo_values = c(&quot;ma&quot;),
+                          as_of = Sys.Date()) %&gt;% 
+        as_epi_df(geo_type = &quot;state&quot;, time_type = &quot;day&quot;, as_of = max(.$issue)) %&gt;% 
+        select(geo_value, time_value, cases = value) %&gt;% as_tsibble() %&gt;%
+        index_by(epiweek = ~yearweek(., week_start = 7)) %&gt;% 
+        group_by(geo_value) %&gt;% 
+        summarise(cases = sum(cases)) %&gt;% ungroup() %&gt;% 
+        as_tibble() %&gt;% dplyr::rename(time_value = epiweek) %&gt;% 
+        as_epi_df(geo_type = &quot;state&quot;, time_type = &quot;week&quot;)
+        
+)</code></pre>
+<pre><code>## Fetched day 2021-01-01 to 2022-03-01: num_entries = 425</code></pre>
+<pre><code>## An `epi_df` object, with metadata:
+## * geo_type  = state
+## * time_type = week
+## * as_of     = 2022-04-13 09:37:22
+## 
+## # A tibble: 62 × 3
+##    geo_value time_value cases
+##  * &lt;chr&gt;         &lt;week&gt; &lt;dbl&gt;
+##  1 ma          2020 W53  9003
+##  2 ma          2021 W01 42954
+##  3 ma          2021 W02 38591
+##  4 ma          2021 W03 30367
+##  5 ma          2021 W04 25267
+##  6 ma          2021 W05 19467
+##  7 ma          2021 W06 15068
+##  8 ma          2021 W07 11869
+##  9 ma          2021 W08 11916
+## 10 ma          2021 W09 10251
+## # … with 52 more rows</code></pre>
+</div>
+<div id="compute-upswings-on-real-data" class="section level1">
+<h1>Compute upswings on real data</h1>
+<p>The <code>rel_change</code> method in the <code>growth_rate</code>
+function from <code>epiprocess</code> defines relative change at focal
+time <span class="math inline">\(T\)</span> with bandwith <span
+class="math inline">\(h\)</span> as:</p>
+<p><span class="math display">\[\frac{1}{h} *
+\left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} *
+\left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} *
+\left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t =
+T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) =
+\frac{1}{h} R^{h}_{T + h}\]</span></p>
+<p>where <span class="math inline">\(R_{T+h}^{h}\)</span> is the
+<strong>the actual</strong> <span
+class="math inline">\(h\)</span>-epiweek-incidence relative change as
+defined in notebook 7 on computing upswings on incidence data. Using the
+<code>rel_change</code> option in the <code>growth_rate</code> function
+from <code>epiprocess</code> with bandwidth being <code>h</code>.</p>
+<pre class="r"><code>surge_inc &lt;- df_inc %&gt;% mutate(growth_raw = growth_rate(time_value, cases, method = &quot;rel_change&quot;, 
+                                                        h = settings$h), 
+                  growth_adj = growth_raw * settings$h) %&gt;%
+    mutate(surge_raw = case_when(
+        growth_raw &gt;= settings$upswing_thresh &amp; cases &gt;= settings$min_thresh * settings$h ~ TRUE, 
+        growth_raw &lt; settings$upswing_thresh &amp; cases &gt;= settings$min_thresh * settings$h ~ FALSE,
+        cases &lt; settings$min_thresh * settings$h ~ NA
+    )) %&gt;% 
+    mutate(surge_adj = case_when(
+        growth_adj &gt;= settings$upswing_thresh &amp; cases &gt;= settings$min_thresh * settings$h ~ TRUE, 
+        growth_adj &lt; settings$upswing_thresh &amp; cases &gt;= settings$min_thresh * settings$h ~ FALSE,
+        cases &lt; settings$min_thresh * settings$h ~ NA
+    ))
+
+
+p1 &lt;- ggplot(surge_inc, aes(x = time_value, y = cases)) + geom_point(aes(col = surge_raw)) + theme_bw() + 
+    labs(x = &quot;Epiweek&quot;, y = &quot;Incident cases&quot;, col = &quot;Surge&quot;, title = &quot;Using growth_rate function&quot;)
+p2 &lt;- ggplot(surge_inc, aes(x = time_value, y = cases)) + geom_point(aes(col = surge_adj)) + theme_bw() + 
+    labs(x = &quot;Epiweek&quot;, y = &quot;Incident cases&quot;, col = &quot;Surge&quot;, title = &quot;growth_rate multiplied by bandwith&quot;)</code></pre>
+<pre class="r"><code>surge_cum &lt;- df_cum %&gt;% mutate(prev_cumulative = lag(cases, order_by = time_value, n = settings$h), 
+    h_ew_inc = cases - prev_cumulative, 
+    prev_h_ew_inc = lag(h_ew_inc, order_by = time_value, n = settings$h), 
+    rel_change = (h_ew_inc - prev_h_ew_inc) / prev_h_ew_inc, 
+    surge = case_when(
+        rel_change &gt;= settings$upswing_thresh &amp; h_ew_inc &gt;= settings$min_thresh * settings$h ~ TRUE,
+        rel_change &lt; settings$upswing_thresh &amp; h_ew_inc &gt;= settings$min_thresh * settings$h ~ FALSE,
+        h_ew_inc &lt; settings$min_thresh * settings$h ~ NA),
+    prev_surge = lag(surge, order_by = time_value, n = settings$h), 
+    cumulative = cases,
+    inc = cases - lag(cases, order_by = time_value),
+    target_end_date = time_value)
+
+p3 &lt;- surge_cum %&gt;% 
+    ggplot(aes(x = time_value, y = inc, col = surge)) + geom_point() + 
+    theme_bw() + labs(x = &quot;Epiweek&quot;, y = &quot;Incidence cases&quot;, title = &quot;Surge calculated using cumulative data&quot;) 
+
+p1 / p2 / p3    </code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<p><img
+src="update-latest-data_files/figure-html/surge_cum-1.png" /><!-- --></p>
+<p>Unfortunately, using the cumulative formulation, the real values were
+lagged by a factor of <code>h</code>.</p>
+<pre class="r"><code>head(tibble(
+    epiprocess = surge_inc$growth_adj,
+    reference = surge_cum$rel_change
+), n = 10)</code></pre>
+<pre><code>## # A tibble: 10 × 2
+##    epiprocess reference
+##         &lt;dbl&gt;     &lt;dbl&gt;
+##  1     4.49      NA    
+##  2     0.125     NA    
+##  3    -0.289     NA    
+##  4    -0.407     NA    
+##  5    -0.575     NA    
+##  6    -0.568     NA    
+##  7    -0.504     NA    
+##  8    -0.371     NA    
+##  9    -0.179     -0.575
+## 10     0.0855    -0.568</code></pre>
+<p>However, once corrected by phase, the results seems to be identical
+between using <code>growth_rate</code> and the original cumulative
+code.</p>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
