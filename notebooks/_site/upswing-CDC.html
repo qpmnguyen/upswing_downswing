@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Quang Nguyen" />
+
+
+<title>Comparing surge definition to CDC</title>
+
+<script src="site_libs/header-attrs-2.12/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Project Website</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Analyses
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="upswing-CDC.html">Upswings</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Comparing surge definition to CDC</h1>
+<h4 class="author">Quang Nguyen</h4>
+<h4 class="date">Last compiled on 2022-04-13</h4>
+
+</div>
+
+
+<div id="data-pre-loading-and-processing" class="section level1">
+<h1>Data pre-loading and processing</h1>
+<pre class="r"><code>library(here)
+library(covidcast)
+library(epiprocess)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(patchwork)
+here::i_am(path = &quot;notebooks/upswing-CDC.Rmd&quot;)
+source(here(&quot;R&quot;, &quot;utils.R&quot;))
+# (settings &lt;- get_settings(start_date = &quot;2020-06-01&quot;, end_date = &quot;2022-03-01&quot;))</code></pre>
+<p>Loading CDC Rt estimates</p>
+<pre class="r"><code>cdc_rt &lt;- read_csv(file = here(&quot;data&quot;, &quot;cdc_rt.csv&quot;)) %&gt;% select(-1)</code></pre>
+<pre><code>## New names:
+## * `` -&gt; ...1</code></pre>
+<pre><code>## Rows: 48106 Columns: 15
+## ── Column specification ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr   (3): state, type, version
+## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90
+## lgl   (1): strat
+## date  (1): date
+## 
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code>cdc_gr &lt;- read_csv(file = here(&quot;data&quot;, &quot;cdc_gr.csv&quot;)) %&gt;% select(-1)</code></pre>
+<pre><code>## New names:
+## * `` -&gt; ...1
+## Rows: 42700 Columns: 15── Column specification ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+## Delimiter: &quot;,&quot;
+## chr   (3): state, type, version
+## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90
+## lgl   (1): strat
+## date  (1): date
+## ℹ Use `spec()` to retrieve the full column specification for this data.
+## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+<pre class="r"><code>start_date &lt;- as.character(min(cdc_rt$date))
+end_date &lt;- as.character(max(cdc_rt$date))
+h &lt;- 4
+surge_thresh &lt;- 0.5
+min_inc &lt;- 20
+
+
+head(cdc_rt)</code></pre>
+<pre><code>## # A tibble: 6 × 14
+##   state   date       type     median  mean    sd lower_20 upper_20 lower_50 upper_50 lower_90 upper_90 version strat
+##   &lt;chr&gt;   &lt;date&gt;     &lt;chr&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;   &lt;lgl&gt;
+## 1 Alabama 2020-08-10 estimate   0.96  0.96  0.02     0.96     0.97     0.95     0.97     0.93     0.99 v001    NA   
+## 2 Alabama 2020-08-11 estimate   0.96  0.96  0.02     0.96     0.97     0.95     0.97     0.93     0.99 v001    NA   
+## 3 Alabama 2020-08-12 estimate   0.96  0.96  0.02     0.96     0.97     0.95     0.97     0.92     0.99 v001    NA   
+## 4 Alabama 2020-08-13 estimate   0.96  0.96  0.02     0.96     0.97     0.95     0.97     0.93     1    v001    NA   
+## 5 Alabama 2020-08-14 estimate   0.96  0.96  0.02     0.96     0.97     0.95     0.97     0.93     1    v001    NA   
+## 6 Alabama 2020-08-15 estimate   0.96  0.97  0.02     0.96     0.97     0.95     0.98     0.93     1    v001    NA</code></pre>
+<pre class="r"><code>head(cdc_gr)</code></pre>
+<pre><code>## # A tibble: 6 × 14
+##   state   date       type     median   mean    sd lower_20 upper_20 lower_50 upper_50 lower_90 upper_90 version strat
+##   &lt;chr&gt;   &lt;date&gt;     &lt;chr&gt;     &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;   &lt;lgl&gt;
+## 1 Alabama 2020-08-10 estimate -0.011 -0.012 0.006   -0.012   -0.01    -0.015   -0.008   -0.021   -0.004 v001    NA   
+## 2 Alabama 2020-08-11 estimate -0.011 -0.011 0.006   -0.011   -0.009   -0.014   -0.008   -0.02    -0.003 v001    NA   
+## 3 Alabama 2020-08-12 estimate -0.011 -0.011 0.006   -0.011   -0.009   -0.013   -0.007   -0.02    -0.002 v001    NA   
+## 4 Alabama 2020-08-13 estimate -0.011 -0.01  0.006   -0.012   -0.009   -0.013   -0.007   -0.02    -0.001 v001    NA   
+## 5 Alabama 2020-08-14 estimate -0.01  -0.01  0.006   -0.011   -0.009   -0.014   -0.008   -0.021   -0.002 v001    NA   
+## 6 Alabama 2020-08-15 estimate -0.01  -0.01  0.006   -0.011   -0.009   -0.013   -0.007   -0.02    -0.001 v001    NA</code></pre>
+<p>Obtain case-count data from JHU using start and end dates as defined
+by the CDC file which is from 2020-08-10 and 2021-06-14.</p>
+<pre class="r"><code>print(paste(&quot;Computing surge data from&quot;, start_date, &quot;to&quot;, end_date))</code></pre>
+<pre><code>## [1] &quot;Computing surge data from 2020-08-10 to 2021-06-14&quot;</code></pre>
+<pre class="r"><code># load data from covid_cast signal
+df &lt;- covidcast_signal(data_source = &quot;jhu-csse&quot;, 
+                          signal = &quot;confirmed_incidence_num&quot;, 
+                          start_day = start_date, 
+                          end_day = end_date, 
+                          geo_type = &quot;state&quot;,
+                          as_of = Sys.Date()) </code></pre>
+<pre><code>## Fetched day 2020-08-10 to 2020-10-13: num_entries = 3640</code></pre>
+<pre><code>## Fetched day 2020-10-14 to 2020-12-17: num_entries = 3640</code></pre>
+<pre><code>## Fetched day 2020-12-18 to 2021-02-20: num_entries = 3640</code></pre>
+<pre><code>## Fetched day 2021-02-21 to 2021-04-26: num_entries = 3640</code></pre>
+<pre><code>## Fetched day 2021-04-27 to 2021-06-14: num_entries = 2744</code></pre>
+<p>Here, we convert <code>covidcast_signal</code> data into
+<code>epi_df</code> and <code>tsibble</code>. We have to back-convert to
+<code>epi_df</code> to work with <code>growth_rate</code> function.</p>
+<pre class="r"><code># convert to epi-df 
+# after temporal operations in tsibble have to back-convert to epi_df
+df &lt;- df %&gt;% 
+        as_epi_df(geo_type = &quot;state&quot;, time_type = &quot;day&quot;, as_of = max(.$issue)) %&gt;% 
+        select(geo_value, time_value, cases = value) %&gt;% as_tsibble() %&gt;%
+        index_by(epiweek = ~yearweek(., week_start = 7)) %&gt;% 
+        group_by(geo_value) %&gt;% 
+        summarise(cases = sum(cases)) %&gt;% ungroup() %&gt;% 
+        as_tibble() %&gt;% dplyr::rename(time_value = epiweek) %&gt;% 
+        as_epi_df(geo_type = &quot;state&quot;, time_type = &quot;week&quot;) %&gt;%
+        mutate(geo_value = covidcast::abbr_to_name(geo_value, ignore.case = TRUE))
+
+head(df)</code></pre>
+<pre><code>## # A tibble: 6 × 3
+##   geo_value time_value cases
+##   &lt;chr&gt;         &lt;week&gt; &lt;dbl&gt;
+## 1 Alaska      2020 W33   480
+## 2 Alaska      2020 W34   547
+## 3 Alaska      2020 W35   533
+## 4 Alaska      2020 W36   496
+## 5 Alaska      2020 W37   546
+## 6 Alaska      2020 W38   552</code></pre>
+</div>
+<div id="surgedownswing-computation" class="section level1">
+<h1>Surge/Downswing computation</h1>
+<p>Compute upswing using growth_rate from epiprocess and use approximate
+labels. For surge classification using growth rate, we use a the weekly
+percent increase threshold in incidence to be 50% or more assuming that
+the incident case per week is at least 20. For surge classification
+using Rt, classified a week as increasing if the Rt had a 95%
+probability of being greater than or less than 1 (weekly Rt estimates
+were obtained by averaging daily estimates across the entire week).</p>
+<pre class="r"><code>df &lt;- df %&gt;% group_by(geo_value) %&gt;% 
+    mutate(gr = growth_rate(y = cases, method = &quot;rel_change&quot;, h = h) * h) %&gt;% 
+    mutate(surge = case_when(
+        gr &gt;= surge_thresh &amp; cases &gt;= min_inc ~ &quot;increasing&quot;,
+        gr &lt;= -surge_thresh &amp; cases &gt;= min_inc ~ &quot;decreasing&quot;, 
+        TRUE ~ &quot;unclassified&quot;
+    ))
+
+rt &lt;- cdc_rt %&gt;% 
+    mutate(time_value = yearweek(date, week_start = 7)) %&gt;% 
+    rename(&quot;geo_value&quot; = &quot;state&quot;) %&gt;% 
+    group_by(geo_value, time_value) %&gt;% 
+    summarise(rt = mean(mean), rt_upper = mean(upper_90), rt_lower = mean(lower_90)) %&gt;% 
+    mutate(surge = case_when(
+        rt_lower &gt; 1 ~ &quot;increasing&quot;, 
+        rt_upper &lt; 1 ~ &quot;decreasing&quot;,
+        TRUE ~ &quot;unclassified&quot;
+    ))</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;geo_value&#39;. You can override using the `.groups` argument.</code></pre>
+<pre class="r"><code>head(df)</code></pre>
+<pre><code>## # A tibble: 6 × 5
+##   geo_value time_value cases     gr surge       
+##   &lt;chr&gt;         &lt;week&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;       
+## 1 Alaska      2020 W33   480 0.168  unclassified
+## 2 Alaska      2020 W34   547 0.0474 unclassified
+## 3 Alaska      2020 W35   533 0.120  unclassified
+## 4 Alaska      2020 W36   496 0.304  unclassified
+## 5 Alaska      2020 W37   546 0.561  increasing  
+## 6 Alaska      2020 W38   552 0.938  increasing</code></pre>
+<pre class="r"><code>head(rt)</code></pre>
+<pre><code>## # A tibble: 6 × 6
+## # Groups:   geo_value [1]
+##   geo_value time_value    rt rt_upper rt_lower surge       
+##   &lt;chr&gt;         &lt;week&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt; &lt;chr&gt;       
+## 1 Alabama     2020 W33 0.962    0.995    0.928 decreasing  
+## 2 Alabama     2020 W34 0.976    1.01     0.933 unclassified
+## 3 Alabama     2020 W35 0.97     1.02     0.919 unclassified
+## 4 Alabama     2020 W36 0.962    1.01     0.916 unclassified
+## 5 Alabama     2020 W37 0.976    1.03     0.902 unclassified
+## 6 Alabama     2020 W38 0.991    1.05     0.928 unclassified</code></pre>
+<pre class="r"><code>joint_df &lt;- inner_join(df, rt, by=c(&quot;geo_value&quot;, &quot;time_value&quot;)) %&gt;% 
+    pivot_longer(c(surge.x, surge.y), names_to = &quot;source&quot;, values_to = &quot;surge&quot;) %&gt;%
+    mutate(source = if_else(source == &quot;surge.x&quot;, &quot;gr&quot;, &quot;cdc&quot;))
+
+cols &lt;- c(&quot;unclassified&quot; = &quot;#003f5c&quot;, &quot;increasing&quot; = &quot;#bc5090&quot;, &quot;decreasing&quot; = &quot;#ffa600&quot;)</code></pre>
+</div>
+<div id="per-state-plots-of-increasingdecreasingunclassified"
+class="section level1 tabset">
+<h1 class="tabset">Per state plots of
+increasing/decreasing/unclassified</h1>
+<p>These plots represent per-week classification based on the schema
+above. As such, some weeks are considered increasing/decreasing while
+others are “unclassified”</p>
+<pre class="r"><code>for (i in joint_df %&gt;% pull(geo_value) %&gt;% unique()){
+    cat(&#39;##&#39;, i, &#39;\n&#39;)
+    p1 &lt;- ggplot(joint_df %&gt;% filter(geo_value == i) %&gt;% filter(source == &quot;gr&quot;), 
+                 aes(x = time_value, y = cases)) + 
+        geom_line(alpha = 0.5) + 
+        geom_point(aes(col = surge)) + 
+        geom_rect(aes(ymin = 0, ymax = max(cases) + 10, xmin = time_value - 0.5, 
+                      xmax = time_value + 0.5, fill = surge), alpha = 0.3) + 
+        scale_color_manual(values = cols) + 
+        scale_fill_manual(values = cols) + 
+        theme_bw() +
+        labs(y = &quot;Cases&quot;, x = &quot;Epiweek (Year-Week)&quot;, col = &quot;Phase classification&quot;, fill = &quot;Phase classification&quot;, 
+             title = str_wrap(&quot;Phase classification via growth rate thresholded at 0.5&quot;, width = 30))
+    p2 &lt;- ggplot(joint_df %&gt;% filter(geo_value == i) %&gt;% filter(source == &quot;cdc&quot;), 
+                 aes(x = time_value, y = rt)) +
+        geom_point() + 
+        geom_line(alpha = 0.5) + 
+        geom_point(aes(col = surge)) + 
+        geom_ribbon(aes(ymin = rt_lower, ymax = rt_upper), alpha = 0.4) +
+        geom_rect(aes(ymin = 0.5, ymax = max(rt) + 0.3, xmin = time_value - 0.5, 
+                      xmax = time_value + 0.5, fill = surge), alpha = 0.3) + 
+        scale_color_manual(values = cols) + 
+        scale_fill_manual(values = cols) + 
+        theme_bw() +
+        labs(y = &quot;Rt&quot;, x = &quot;Epiweek (Year-Week)&quot;, col = &quot;Phase classification&quot;, fill = &quot;Phase classification&quot;, 
+             title = str_wrap(&quot;Phase classification via 95% CI estimates of Rt&quot;, width = 30))
+
+    
+    x &lt;- joint_df$gr[joint_df$geo_value == i]
+    y &lt;- joint_df$rt[joint_df$geo_value == i]
+    
+    y &lt;- y[-which(is.na(x))]
+    x &lt;- na.omit(x)
+    
+    p3 &lt;- ggplot(joint_df %&gt;% filter(geo_value == i), 
+                 aes(x = rank(gr), y = rank(rt))) + 
+        geom_point() + 
+        labs(x = &quot;rank(growth_rate)&quot;, y = &quot;rank(Rt)&quot;, 
+             title = paste(&quot;Spearman correlation:&quot;, round(cor(x,y, method = &quot;spearman&quot;), 3))) +
+        theme_bw()
+    
+    layout &lt;- &quot;
+    AAA#
+    AAA#
+    AAAC
+    BBBC
+    BBB#
+    BBB#
+    &quot;
+        
+    print(p1 + p2 + p3 + plot_layout(guides = &quot;collect&quot;, design = layout))
+    cat(&quot;\n \n&quot;)
+}</code></pre>
+<div id="alaska" class="section level2">
+<h2>Alaska</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-1.png" /><!-- --></p>
+</div>
+<div id="alabama" class="section level2">
+<h2>Alabama</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-2.png" /><!-- --></p>
+</div>
+<div id="arkansas" class="section level2">
+<h2>Arkansas</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-3.png" /><!-- --></p>
+</div>
+<div id="arizona" class="section level2">
+<h2>Arizona</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-4.png" /><!-- --></p>
+</div>
+<div id="california" class="section level2">
+<h2>California</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-5.png" /><!-- --></p>
+</div>
+<div id="colorado" class="section level2">
+<h2>Colorado</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-6.png" /><!-- --></p>
+</div>
+<div id="connecticut" class="section level2">
+<h2>Connecticut</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-7.png" /><!-- --></p>
+</div>
+<div id="district-of-columbia" class="section level2">
+<h2>District of Columbia</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-8.png" /><!-- --></p>
+</div>
+<div id="delaware" class="section level2">
+<h2>Delaware</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-9.png" /><!-- --></p>
+</div>
+<div id="florida" class="section level2">
+<h2>Florida</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-10.png" /><!-- --></p>
+</div>
+<div id="georgia" class="section level2">
+<h2>Georgia</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-11.png" /><!-- --></p>
+</div>
+<div id="hawaii" class="section level2">
+<h2>Hawaii</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-12.png" /><!-- --></p>
+</div>
+<div id="iowa" class="section level2">
+<h2>Iowa</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-13.png" /><!-- --></p>
+</div>
+<div id="idaho" class="section level2">
+<h2>Idaho</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-14.png" /><!-- --></p>
+</div>
+<div id="illinois" class="section level2">
+<h2>Illinois</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-15.png" /><!-- --></p>
+</div>
+<div id="indiana" class="section level2">
+<h2>Indiana</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-16.png" /><!-- --></p>
+</div>
+<div id="kansas" class="section level2">
+<h2>Kansas</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-17.png" /><!-- --></p>
+</div>
+<div id="kentucky" class="section level2">
+<h2>Kentucky</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-18.png" /><!-- --></p>
+</div>
+<div id="louisiana" class="section level2">
+<h2>Louisiana</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-19.png" /><!-- --></p>
+</div>
+<div id="massachusetts" class="section level2">
+<h2>Massachusetts</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-20.png" /><!-- --></p>
+</div>
+<div id="maryland" class="section level2">
+<h2>Maryland</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-21.png" /><!-- --></p>
+</div>
+<div id="maine" class="section level2">
+<h2>Maine</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-22.png" /><!-- --></p>
+</div>
+<div id="michigan" class="section level2">
+<h2>Michigan</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-23.png" /><!-- --></p>
+</div>
+<div id="minnesota" class="section level2">
+<h2>Minnesota</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-24.png" /><!-- --></p>
+</div>
+<div id="missouri" class="section level2">
+<h2>Missouri</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-25.png" /><!-- --></p>
+</div>
+<div id="mississippi" class="section level2">
+<h2>Mississippi</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-26.png" /><!-- --></p>
+</div>
+<div id="montana" class="section level2">
+<h2>Montana</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-27.png" /><!-- --></p>
+</div>
+<div id="north-carolina" class="section level2">
+<h2>North Carolina</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-28.png" /><!-- --></p>
+</div>
+<div id="north-dakota" class="section level2">
+<h2>North Dakota</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-29.png" /><!-- --></p>
+</div>
+<div id="nebraska" class="section level2">
+<h2>Nebraska</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-30.png" /><!-- --></p>
+</div>
+<div id="new-hampshire" class="section level2">
+<h2>New Hampshire</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-31.png" /><!-- --></p>
+</div>
+<div id="new-jersey" class="section level2">
+<h2>New Jersey</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-32.png" /><!-- --></p>
+</div>
+<div id="new-mexico" class="section level2">
+<h2>New Mexico</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-33.png" /><!-- --></p>
+</div>
+<div id="nevada" class="section level2">
+<h2>Nevada</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-34.png" /><!-- --></p>
+</div>
+<div id="new-york" class="section level2">
+<h2>New York</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-35.png" /><!-- --></p>
+</div>
+<div id="ohio" class="section level2">
+<h2>Ohio</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-36.png" /><!-- --></p>
+</div>
+<div id="oklahoma" class="section level2">
+<h2>Oklahoma</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-37.png" /><!-- --></p>
+</div>
+<div id="oregon" class="section level2">
+<h2>Oregon</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-38.png" /><!-- --></p>
+</div>
+<div id="pennsylvania" class="section level2">
+<h2>Pennsylvania</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-39.png" /><!-- --></p>
+</div>
+<div id="rhode-island" class="section level2">
+<h2>Rhode Island</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-40.png" /><!-- --></p>
+</div>
+<div id="south-carolina" class="section level2">
+<h2>South Carolina</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-41.png" /><!-- --></p>
+</div>
+<div id="south-dakota" class="section level2">
+<h2>South Dakota</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-42.png" /><!-- --></p>
+</div>
+<div id="tennessee" class="section level2">
+<h2>Tennessee</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-43.png" /><!-- --></p>
+</div>
+<div id="texas" class="section level2">
+<h2>Texas</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-44.png" /><!-- --></p>
+</div>
+<div id="utah" class="section level2">
+<h2>Utah</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-45.png" /><!-- --></p>
+</div>
+<div id="virginia" class="section level2">
+<h2>Virginia</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-46.png" /><!-- --></p>
+</div>
+<div id="vermont" class="section level2">
+<h2>Vermont</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-47.png" /><!-- --></p>
+</div>
+<div id="washington" class="section level2">
+<h2>Washington</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-48.png" /><!-- --></p>
+</div>
+<div id="wisconsin" class="section level2">
+<h2>Wisconsin</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-49.png" /><!-- --></p>
+</div>
+<div id="west-virginia" class="section level2">
+<h2>West Virginia</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-50.png" /><!-- --></p>
+</div>
+<div id="wyoming" class="section level2">
+<h2>Wyoming</h2>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-5-51.png" /><!-- --></p>
+</div>
+</div>
+<div id="per-state-plots-with-full-phase-classification"
+class="section level1">
+<h1>Per-state plots with full phase classification</h1>
+<p>These plots represent per-state classifications with include full
+phase classifications. Specifically:</p>
+<ul>
+<li>For weeks between two increasing phases, we classified them as
+increasing and for weeks between two decreasing periods, we classified
+them as decreasing.<br />
+</li>
+<li>Weeks between increasing and decreasing phases were classified as
+peaks, whereas nadirs were defined as periods between decreasing and
+increasing phases.<br />
+</li>
+<li>If peaks or nadirs only contained an interval of 1 week, we included
+the week before and after in the peak/nadir classification.</li>
+<li>Periods at the beginning or the end of the analysis period were
+classified as a continuation of whichever phase preceded or followed
+them.</li>
+</ul>
+<pre class="r"><code># phase classification was done by counting all &quot;unclassified&quot; as missing 
+# we then use count_gaps in order to define all complete phases and then assign labels to them  
+# and then loop through the main data frame and assign labels based on gaps (if surge is unclassified)
+# for some reason using map functions doesn&#39;t work when trying to filter time_value &gt;= .from and &lt;= .to
+
+get_lab &lt;- function(df, geo, time){
+    return(df %&gt;% filter(geo_value == geo) %&gt;% 
+               filter(time_value == time) %&gt;%
+               pull(surge))
+}
+
+phase_clasification &lt;- function(src){
+    data &lt;- joint_df %&gt;% filter(source == src)
+    gaps &lt;- data %&gt;% filter(surge != &quot;unclassified&quot;) %&gt;% 
+        as_tsibble(key = geo_value) %&gt;% tsibble::count_gaps(.full = TRUE) 
+    
+    
+    gaps &lt;- gaps %&gt;% mutate(label = pmap_chr(gaps, function(geo_value, .from, .to, ...){
+        before &lt;- get_lab(data, geo_value, .from - 1)
+        after &lt;- get_lab(data, geo_value, .to + 1)
+        if (length(before) == 0){
+            val &lt;- after
+        } else if (length(after) == 0){
+            val &lt;- before
+        } else {
+            val &lt;- case_when(
+                before == &quot;increasing&quot; &amp; after == &quot;decreasing&quot; ~ &quot;peaks&quot;,
+                before == &quot;decreasing&quot; &amp; after == &quot;increasing&quot; ~ &quot;nadirs&quot;,
+                before == &quot;increasing&quot; &amp; after == &quot;increasing&quot; ~ &quot;increasing&quot;,
+                before == &quot;decreasing&quot; &amp; after == &quot;decreasing&quot; ~ &quot;decreasing&quot;,
+                TRUE ~ NA_character_
+            )
+        }
+        return(val)
+    }))
+    
+    phases &lt;- vector(length = nrow(data))
+    for (i in seq_along(phases)){
+        if (data[i,]$surge != &quot;unclassified&quot;){
+            lab &lt;- data[i,]$surge
+        } else {
+             t &lt;- data[i,]$time_value
+             g &lt;- data[i,]$geo_value
+             lab &lt;- gaps %&gt;% filter(geo_value == g) %&gt;% 
+                 filter(.from &lt;= t) %&gt;% 
+                 filter(.to &gt;= t) %&gt;% pull(label) %&gt;% as.vector()
+             if (length(lab) == 0){
+                 lab &lt;- NA_character_
+             }
+        }
+        phases[i] &lt;- lab
+    }
+    data$phases &lt;- phases
+    return(data)
+}</code></pre>
+<p>Applying phase classification to CDC Rt and case count data sets</p>
+<pre class="r"><code>gr_phase &lt;- phase_clasification(&quot;gr&quot;)</code></pre>
+<pre><code>## Using `time_value` as index variable.</code></pre>
+<pre class="r"><code>rt_phase &lt;- phase_clasification(&quot;cdc&quot;)</code></pre>
+<pre><code>## Using `time_value` as index variable.</code></pre>
+<pre class="r"><code>cols &lt;- c(&quot;peaks&quot; = &quot;#003f5c&quot;, &quot;increasing&quot; = &quot;#bc5090&quot;, &quot;decreasing&quot; = &quot;#ffa600&quot;, &quot;nadirs&quot; = &quot;#58508d&quot;)</code></pre>
+<div id="per-state-plots" class="section level2 tabset">
+<h2 class="tabset">Per-state plots</h2>
+<pre class="r"><code>for (i in joint_df %&gt;% pull(geo_value) %&gt;% unique()){
+    cat(&#39;###&#39;, i, &#39;\n&#39;)
+    p1 &lt;- ggplot(gr_phase %&gt;% filter(geo_value == i), 
+                 aes(x = time_value, y = cases)) + 
+        geom_line(alpha = 0.5) + 
+        geom_point(aes(col = phases)) + 
+        geom_rect(aes(ymin = 0, ymax = max(cases) + 10, xmin = time_value - 0.5, 
+                      xmax = time_value + 0.5, fill = phases), alpha = 0.3) + 
+        scale_color_manual(values = cols) + 
+        scale_fill_manual(values = cols) + 
+        theme_bw() +
+        labs(y = &quot;Cases&quot;, x = &quot;Epiweek (Year-Week)&quot;, col = &quot;Phase classification&quot;, fill = &quot;Phase classification&quot;, 
+             title = str_wrap(&quot;Phase classification via growth rate thresholded at 0.5&quot;, width = 30))
+    p2 &lt;- ggplot(rt_phase %&gt;% filter(geo_value == i), 
+                 aes(x = time_value, y = rt)) +
+        geom_point() + 
+        geom_line(alpha = 0.5) + 
+        geom_point(aes(col = phases)) + 
+        geom_ribbon(aes(ymin = rt_lower, ymax = rt_upper), alpha = 0.4) +
+        geom_rect(aes(ymin = 0.5, ymax = max(rt) + 0.3, xmin = time_value - 0.5, 
+                      xmax = time_value + 0.5, fill = phases), alpha = 0.3) + 
+        scale_color_manual(values = cols) + 
+        scale_fill_manual(values = cols) + 
+        theme_bw() +
+        labs(y = &quot;Rt&quot;, x = &quot;Epiweek (Year-Week)&quot;, col = &quot;Phase classification&quot;, fill = &quot;Phase classification&quot;, 
+             title = str_wrap(&quot;Phase classification via 95% CI estimates of Rt&quot;, width = 30))
+    print(p1 / p2 + plot_layout(guides = &quot;collect&quot;))
+    cat(&quot;\n\n&quot;)
+}</code></pre>
+<div id="alaska-1" class="section level3">
+<h3>Alaska</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-1.png" /><!-- --></p>
+</div>
+<div id="alabama-1" class="section level3">
+<h3>Alabama</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-2.png" /><!-- --></p>
+</div>
+<div id="arkansas-1" class="section level3">
+<h3>Arkansas</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-3.png" /><!-- --></p>
+</div>
+<div id="arizona-1" class="section level3">
+<h3>Arizona</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-4.png" /><!-- --></p>
+</div>
+<div id="california-1" class="section level3">
+<h3>California</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-5.png" /><!-- --></p>
+</div>
+<div id="colorado-1" class="section level3">
+<h3>Colorado</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-6.png" /><!-- --></p>
+</div>
+<div id="connecticut-1" class="section level3">
+<h3>Connecticut</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-7.png" /><!-- --></p>
+</div>
+<div id="district-of-columbia-1" class="section level3">
+<h3>District of Columbia</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-8.png" /><!-- --></p>
+</div>
+<div id="delaware-1" class="section level3">
+<h3>Delaware</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-9.png" /><!-- --></p>
+</div>
+<div id="florida-1" class="section level3">
+<h3>Florida</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-10.png" /><!-- --></p>
+</div>
+<div id="georgia-1" class="section level3">
+<h3>Georgia</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-11.png" /><!-- --></p>
+</div>
+<div id="hawaii-1" class="section level3">
+<h3>Hawaii</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-12.png" /><!-- --></p>
+</div>
+<div id="iowa-1" class="section level3">
+<h3>Iowa</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-13.png" /><!-- --></p>
+</div>
+<div id="idaho-1" class="section level3">
+<h3>Idaho</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-14.png" /><!-- --></p>
+</div>
+<div id="illinois-1" class="section level3">
+<h3>Illinois</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-15.png" /><!-- --></p>
+</div>
+<div id="indiana-1" class="section level3">
+<h3>Indiana</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-16.png" /><!-- --></p>
+</div>
+<div id="kansas-1" class="section level3">
+<h3>Kansas</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-17.png" /><!-- --></p>
+</div>
+<div id="kentucky-1" class="section level3">
+<h3>Kentucky</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-18.png" /><!-- --></p>
+</div>
+<div id="louisiana-1" class="section level3">
+<h3>Louisiana</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-19.png" /><!-- --></p>
+</div>
+<div id="massachusetts-1" class="section level3">
+<h3>Massachusetts</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-20.png" /><!-- --></p>
+</div>
+<div id="maryland-1" class="section level3">
+<h3>Maryland</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-21.png" /><!-- --></p>
+</div>
+<div id="maine-1" class="section level3">
+<h3>Maine</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-22.png" /><!-- --></p>
+</div>
+<div id="michigan-1" class="section level3">
+<h3>Michigan</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-23.png" /><!-- --></p>
+</div>
+<div id="minnesota-1" class="section level3">
+<h3>Minnesota</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-24.png" /><!-- --></p>
+</div>
+<div id="missouri-1" class="section level3">
+<h3>Missouri</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-25.png" /><!-- --></p>
+</div>
+<div id="mississippi-1" class="section level3">
+<h3>Mississippi</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-26.png" /><!-- --></p>
+</div>
+<div id="montana-1" class="section level3">
+<h3>Montana</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-27.png" /><!-- --></p>
+</div>
+<div id="north-carolina-1" class="section level3">
+<h3>North Carolina</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-28.png" /><!-- --></p>
+</div>
+<div id="north-dakota-1" class="section level3">
+<h3>North Dakota</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-29.png" /><!-- --></p>
+</div>
+<div id="nebraska-1" class="section level3">
+<h3>Nebraska</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-30.png" /><!-- --></p>
+</div>
+<div id="new-hampshire-1" class="section level3">
+<h3>New Hampshire</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-31.png" /><!-- --></p>
+</div>
+<div id="new-jersey-1" class="section level3">
+<h3>New Jersey</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-32.png" /><!-- --></p>
+</div>
+<div id="new-mexico-1" class="section level3">
+<h3>New Mexico</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-33.png" /><!-- --></p>
+</div>
+<div id="nevada-1" class="section level3">
+<h3>Nevada</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-34.png" /><!-- --></p>
+</div>
+<div id="new-york-1" class="section level3">
+<h3>New York</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-35.png" /><!-- --></p>
+</div>
+<div id="ohio-1" class="section level3">
+<h3>Ohio</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-36.png" /><!-- --></p>
+</div>
+<div id="oklahoma-1" class="section level3">
+<h3>Oklahoma</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-37.png" /><!-- --></p>
+</div>
+<div id="oregon-1" class="section level3">
+<h3>Oregon</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-38.png" /><!-- --></p>
+</div>
+<div id="pennsylvania-1" class="section level3">
+<h3>Pennsylvania</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-39.png" /><!-- --></p>
+</div>
+<div id="rhode-island-1" class="section level3">
+<h3>Rhode Island</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-40.png" /><!-- --></p>
+</div>
+<div id="south-carolina-1" class="section level3">
+<h3>South Carolina</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-41.png" /><!-- --></p>
+</div>
+<div id="south-dakota-1" class="section level3">
+<h3>South Dakota</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-42.png" /><!-- --></p>
+</div>
+<div id="tennessee-1" class="section level3">
+<h3>Tennessee</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-43.png" /><!-- --></p>
+</div>
+<div id="texas-1" class="section level3">
+<h3>Texas</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-44.png" /><!-- --></p>
+</div>
+<div id="utah-1" class="section level3">
+<h3>Utah</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-45.png" /><!-- --></p>
+</div>
+<div id="virginia-1" class="section level3">
+<h3>Virginia</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-46.png" /><!-- --></p>
+</div>
+<div id="vermont-1" class="section level3">
+<h3>Vermont</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-47.png" /><!-- --></p>
+</div>
+<div id="washington-1" class="section level3">
+<h3>Washington</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-48.png" /><!-- --></p>
+</div>
+<div id="wisconsin-1" class="section level3">
+<h3>Wisconsin</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-49.png" /><!-- --></p>
+</div>
+<div id="west-virginia-1" class="section level3">
+<h3>West Virginia</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-50.png" /><!-- --></p>
+</div>
+<div id="wyoming-1" class="section level3">
+<h3>Wyoming</h3>
+<p><img
+src="upswing-CDC_files/figure-html/unnamed-chunk-8-51.png" /><!-- --></p>
+</div>
+</div>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

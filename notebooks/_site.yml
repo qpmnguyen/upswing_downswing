@@ -1,0 +1,10 @@
+name: "Upswing Downswing Project"
+navbar:
+  title: "Project Website"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: Analyses
+      menu:
+        - text: "Upswings"
+          href: upswing-CDC.html
