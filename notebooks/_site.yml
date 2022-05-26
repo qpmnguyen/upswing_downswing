@@ -6,5 +6,7 @@ navbar:
       href: index.html
     - text: Analyses
       menu:
-        - text: "Upswings"
+        - text: "Upswings compared to CDC"
           href: upswing-CDC.html
+        - text: "Evaluating upswing classification for ensemble model"
+          href: ensemble-evaluation.html

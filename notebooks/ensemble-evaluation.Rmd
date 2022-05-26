@@ -1,0 +1,200 @@
+---
+title: "Evaluating the ensemble point forecast"
+author: "Quang Nguyen"
+date: "Last compiled on `r format(Sys.time(), '%Y-%m-%d')`"
+output: 
+    #github_document: default
+    html_document:
+        keep_md: yes
+        toc: true
+        toc_float: true
+        code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data pre-loading and processing
+
+```{r, message=FALSE, warning=FALSE}
+library(here)
+library(covidcast)
+library(epiprocess)
+library(zoltr)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(covidHubUtils)
+library(lubridate)
+library(rlang)
+library(patchwork)
+library(pROC)
+here::i_am(path = "notebooks/ensemble-evaluation.Rmd")
+source(here("R", "utils.R"))
+# (settings <- get_settings(start_date = "2020-06-01", end_date = "2022-03-01"))
+theme_set(theme_bw())
+```
+
+First let's set some parameters
+
+```{r}
+d_range <- seq(ymd("2021-01-01"), ymd("2022-01-01"), by = 7)
+curr_date <- "2022-01-01"
+h <- 4
+wk_ahead <- 1
+inc_case_targets <- paste(1:h, "wk ahead inc case")
+surge_thresh <- 0.5
+min_inc <- 20
+```
+
+# Loading forecasts and underlying data
+
+Using `covidHubUtils` and `zoltar` we load underlying data as well as forecasts
+
+```{r}
+
+pred_case <- load_forecasts(
+    models = "COVIDhub-ensemble", 
+    dates = d_range, 
+    date_window_size = 6,
+    locations = "Massachusetts", 
+    types = "point", 
+    targets = inc_case_targets, 
+    source = "zoltar", 
+    verbose = FALSE, 
+    as_of = curr_date, 
+    hub = c("US")
+)
+
+truth_data <- load_truth(
+    truth_source = "JHU", 
+    target_variable = "inc case", 
+    locations = "Massachusetts"
+)
+
+true_range <- pred_case %>% pull(target_end_date) %>% 
+    unique() %>% 
+    lubridate::as_date()
+
+truth_epidf <- truth_data %>% 
+    select(-c(model, location, target_variable, location_name, 
+              abbreviation, full_location_name)) %>% 
+    dplyr::rename("time_value" = "target_end_date") %>%
+    filter(time_value %in% true_range) %>%
+    as_epi_df(geo_type = "state")
+```
+
+# Surge classification using relative change growth rate formulation
+
+We define surge for a given date using relative change growth rate formulation times the bandwidth using the implementation from `epiprocess`: 
+
+$$\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) = \frac{1}{h} R^{h}_{T + h}$$
+
+A surge is defined for time-point $T$ as the difference in cumulative incident cases between the periods of $T+1$ and $T+h$ and $T$ and $T-h$. As such, an $h$-week ahead forecaster is a nowcaster of whether or not we're currently in a surge.
+
+```{r}
+truth_epidf <- truth_epidf %>% 
+    mutate(gr = growth_rate(y = value, method = "rel_change", h = h) * h) %>%
+    mutate(surge = case_when(
+        gr >= surge_thresh & value >= min_inc ~ TRUE,
+        TRUE ~ FALSE
+    ))
+
+ggplot(truth_epidf, aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge), size = 2.5) + geom_line(alpha = 0.5) + 
+    labs(x = "Weekly data", y = "Incident cases by week")
+```
+
+# Nowcasting surges    
+
+Here we use the following procedures for a focal timepoint $T$ and bandwidth $h$ (for example, 4)  
+
+1. We take a time period from $T+1- h$ to $T+h$. For example at 2021-01-23, we'd be taking the period from 2021-01-02 to 2021-02-20.     
+2. We take the truth period to be from $T+1-h$ to $T$ (inclusive) and the forecasting period to be from $T+1$ to $T+h$. The truth period would have real underlying incident cases while the forecasting period has forecast incident cases at times 1-$h$ weeks ahead. Due to the forecasting date being on Monday instead of exactly one week before the proposed target date, we take forecast incident values from the forecast date closest to the time period defined at $T+1$. For example, at 2021-01-23, we would take forecast values for 2021-01-30 onwards from a forecast date of 2021-01-25.  
+3. We compute the growth rate at time $T$ using these two periods as per the formula above   
+4. We then classify periods as surges using the definition and thresholds defined above.  
+
+```{r}
+# this function combines real case counts from time points t-h to t and forecasted 
+# case counts from t+1 to t+h. Growth rate at time t is then estimated using the relative change 
+# method
+mismatch_slide <- function(slide_df, pred, h){
+    query_dates <- slide_df$time_value
+    req_len <- h * 2
+    # if not enough weeks for prediction
+    if (length(query_dates) != req_len){
+        return(NA_real_)
+    } else {
+        t_date <- query_dates[1:(req_len - h)]
+        ref <- tail(t_date, n = 1)
+        p_date <- query_dates[(req_len - h + 1):req_len]
+        t_data <- slide_df %>% filter(time_value %in% t_date) %>% 
+            mutate(type = "true")
+        # due to weird issues, the ref date + 1 week should be the 1 week ahead forecast
+        f_date <- pred %>% filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>% 
+            pull(forecast_date) %>% unique()
+        p_data <- pred %>% 
+            filter(forecast_date == f_date) %>%
+            filter(target_end_date %in% p_date) %>% 
+            select(geo_value, target_end_date, value, population, geo_type) %>%
+            dplyr::rename("time_value" = target_end_date) %>%
+            mutate(type = "pred")
+        combine <- bind_rows(t_data, p_data)
+        gr <- combine %>% mutate(gr_pred = growth_rate(y = value, h = h, method = "rel_change") * h) %>% 
+            filter(time_value == ref) %>% pull(gr_pred)
+        return(gr)
+    }
+}
+combined_df <- truth_epidf %>% epi_slide(~mismatch_slide(slide_df = .x, pred = pred_case, h = h), 
+                                          n = 2 * 7 * h, align = "center", new_col_name = "pred_gr")
+combined_df <- combined_df %>% mutate(surge_pred = case_when(
+    pred_gr >= surge_thresh & value >= min_inc ~ TRUE,
+    is.na(pred_gr) ~ NA,
+    TRUE ~ FALSE
+))
+head(combined_df, n = 20)
+```
+
+Plotting growth rate when estimated 
+
+```{r}
+gr1 <- ggplot(combined_df, aes(x = time_value, y = gr)) + 
+    geom_line(aes(col = "Est. using real data")) +
+    geom_line(aes(x = time_value, y = pred_gr, 
+                  col = "Est. using real data and forecast")) + 
+    labs(col ="Growth Rate", x = "Week", y = "Growth Rate (adjusted for bandwidth)") +
+    geom_hline(yintercept = 0.5, col = "red")
+
+combined_df %>% filter(month(time_value) %in% c(6,7,8))
+
+```
+
+
+Plotting incident cases and surge classification
+
+```{r}
+p1 <- ggplot(combined_df, aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
+p2 <- ggplot(combined_df, aes(x = time_value, y = value)) + 
+    geom_point(aes(col = surge_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
+
+p1 /p2
+
+```
+
+# Misclassification rate    
+
+```{r}
+combined_df %>% filter(!is.na(surge_pred)) %>% 
+    summarise(misclass_ensemble = mean(surge != surge_pred), 
+              misclass_never = mean(surge),
+              sens = sum(surge & surge_pred)/sum(surge), 
+              spec = sum(!surge & !surge_pred)/sum(!surge))
+pROC::roc(surge ~ pred_gr, data = combined_df, subset = !is.na(surge_pred))
+```
+
