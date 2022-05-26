@@ -40,12 +40,13 @@ First let's set some parameters
 
 ```r
 d_range <- seq(ymd("2021-01-01"), ymd("2022-01-01"), by = 7)
-curr_date <- "2022-01-01"
+curr_date <- "2022-01-02"
 h <- 4
 wk_ahead <- 1
 inc_case_targets <- paste(1:h, "wk ahead inc case")
 surge_thresh <- 0.5
 min_inc <- 20
+state <- "California"
 ```
 
 # Loading forecasts and underlying data
@@ -54,11 +55,42 @@ Using `covidHubUtils` and `zoltar` we load underlying data as well as forecasts
 
 
 ```r
-pred_case <- load_forecasts(
+pred_ensembl <- load_forecasts(
     models = "COVIDhub-ensemble", 
     dates = d_range, 
     date_window_size = 6,
-    locations = "Massachusetts", 
+    locations = state, 
+    types = "point", 
+    targets = inc_case_targets, 
+    source = "zoltar", 
+    verbose = FALSE, 
+    as_of = curr_date, 
+    hub = c("US")
+)
+```
+
+```
+## get_token(): POST: https://zoltardata.com/api-token-auth/
+```
+
+```
+## get_resource(): GET: https://zoltardata.com/api/projects/
+```
+
+```
+## get_resource(): GET: https://zoltardata.com/api/project/44/models/
+```
+
+```
+## get_resource(): GET: https://zoltardata.com/api/project/44/timezeros/
+```
+
+```r
+pred_baseline <- load_forecasts(
+    models = "COVIDhub-baseline", 
+    dates = d_range, 
+    date_window_size = 6, 
+    locations = state, 
     types = "point", 
     targets = inc_case_targets, 
     source = "zoltar", 
@@ -88,10 +120,10 @@ pred_case <- load_forecasts(
 truth_data <- load_truth(
     truth_source = "JHU", 
     target_variable = "inc case", 
-    locations = "Massachusetts"
+    locations = state
 )
 
-true_range <- pred_case %>% pull(target_end_date) %>% 
+true_range <- pred_ensembl %>% pull(target_end_date) %>% 
     unique() %>% 
     lubridate::as_date()
 
@@ -168,41 +200,51 @@ mismatch_slide <- function(slide_df, pred, h){
         return(gr)
     }
 }
-combined_df <- truth_epidf %>% epi_slide(~mismatch_slide(slide_df = .x, pred = pred_case, h = h), 
-                                          n = 2 * 7 * h, align = "center", new_col_name = "pred_gr")
-combined_df <- combined_df %>% mutate(surge_pred = case_when(
-    pred_gr >= surge_thresh & value >= min_inc ~ TRUE,
-    is.na(pred_gr) ~ NA,
+combined_df <- truth_epidf %>% 
+    epi_slide(~mismatch_slide(slide_df = .x, pred = pred_ensembl, h = h), n = 2 * 7 * h, align = "center", 
+              new_col_name = "ensembl_gr") %>%
+    epi_slide(~mismatch_slide(slide_df = .x, pred = pred_baseline, h = h), n = 2 * 7 * h, align = "center", 
+              new_col_name = "baseline_gr")
+    
+combined_df <- combined_df %>% mutate(surge_ensembl = case_when(
+    ensembl_gr >= surge_thresh & value >= min_inc ~ TRUE,
+    is.na(ensembl_gr) ~ NA,
     TRUE ~ FALSE
+)) %>% mutate(
+    surge_baseline = case_when(
+        baseline_gr >= surge_thresh & value >= min_inc ~ TRUE,
+        is.na(baseline_gr) ~ NA,
+        TRUE ~ FALSE
 ))
 head(combined_df, n = 20)
 ```
 
 ```
-## # A tibble: 20 × 9
-##    geo_value time_value value population geo_type      gr surge pred_gr
-##    <chr>     <date>     <dbl>      <dbl> <chr>      <dbl> <lgl>   <dbl>
-##  1 ma        2021-01-02 34579    6892503 state    -0.0132 FALSE NA     
-##  2 ma        2021-01-09 42954    6892503 state    -0.356  FALSE NA     
-##  3 ma        2021-01-16 38591    6892503 state    -0.477  FALSE NA     
-##  4 ma        2021-01-23 30367    6892503 state    -0.511  FALSE -0.246 
-##  5 ma        2021-01-30 25267    6892503 state    -0.575  FALSE -0.415 
-##  6 ma        2021-02-06 19467    6892503 state    -0.568  FALSE -0.470 
-##  7 ma        2021-02-13 15068    6892503 state    -0.504  FALSE -0.571 
-##  8 ma        2021-02-20 11869    6892503 state    -0.371  FALSE -0.562 
-##  9 ma        2021-02-27 11916    6892503 state    -0.179  FALSE -0.405 
-## 10 ma        2021-03-06 10251    6892503 state     0.0855 FALSE -0.329 
-## 11 ma        2021-03-13 10685    6892503 state     0.274  FALSE -0.148 
-## 12 ma        2021-03-20 12241    6892503 state     0.295  FALSE  0.108 
-## 13 ma        2021-03-27 14699    6892503 state     0.128  FALSE  0.279 
-## 14 ma        2021-04-03 15676    6892503 state    -0.117  FALSE  0.254 
-## 15 ma        2021-04-10 14346    6892503 state    -0.316  FALSE -0.0160
-## 16 ma        2021-04-17 13672    6892503 state    -0.482  FALSE -0.132 
-## 17 ma        2021-04-24 10320    6892503 state    -0.570  FALSE -0.463 
-## 18 ma        2021-05-01  8709    6892503 state    -0.649  FALSE -0.547 
-## 19 ma        2021-05-08  6261    6892503 state    -0.707  FALSE -0.600 
-## 20 ma        2021-05-15  4950    6892503 state    -0.757  FALSE -0.619 
-## # … with 1 more variable: surge_pred <lgl>
+## # A tibble: 20 × 11
+##    geo_value time_value  value population geo_type     gr surge ensembl_gr
+##    <chr>     <date>      <dbl>      <dbl> <chr>     <dbl> <lgl>      <dbl>
+##  1 ca        2021-01-02 282497   39512223 state    -0.345 FALSE    NA     
+##  2 ca        2021-01-09 295841   39512223 state    -0.538 FALSE    NA     
+##  3 ca        2021-01-16 278986   39512223 state    -0.661 FALSE    NA     
+##  4 ca        2021-01-23 172432   39512223 state    -0.654 FALSE    -0.372 
+##  5 ca        2021-01-30 139252   39512223 state    -0.712 FALSE    -0.579 
+##  6 ca        2021-02-06  99000   39512223 state    -0.728 FALSE    -0.638 
+##  7 ca        2021-02-13  70859   39512223 state    -0.706 FALSE    -0.667 
+##  8 ca        2021-02-20  46817   39512223 state    -0.677 FALSE    -0.733 
+##  9 ca        2021-02-27  38767   39512223 state    -0.628 FALSE    -0.606 
+## 10 ca        2021-03-06  31361   39512223 state    -0.560 FALSE    -0.484 
+## 11 ca        2021-03-13  24407   39512223 state    -0.425 FALSE    -0.442 
+## 12 ca        2021-03-20  20605   39512223 state    -0.313 FALSE    -0.469 
+## 13 ca        2021-03-27  18770   39512223 state    -0.215 FALSE    -0.306 
+## 14 ca        2021-04-03  18805   39512223 state    -0.154 FALSE    -0.346 
+## 15 ca        2021-04-10  23056   39512223 state    -0.262 FALSE    -0.0961
+## 16 ca        2021-04-17  18480   39512223 state    -0.333 FALSE    -0.0632
+## 17 ca        2021-04-24  14314   39512223 state    -0.366 FALSE    -0.373 
+## 18 ca        2021-05-01  14034   39512223 state    -0.343 FALSE    -0.462 
+## 19 ca        2021-05-08  13133   39512223 state    -0.348 FALSE    -0.322 
+## 20 ca        2021-05-15  11277   39512223 state    -0.338 FALSE    -0.346 
+## # … with 3 more variables: baseline_gr <dbl>, surge_ensembl <lgl>,
+## #   surge_baseline <lgl>
 ```
 
 Plotting growth rate when estimated 
@@ -211,11 +253,27 @@ Plotting growth rate when estimated
 ```r
 gr1 <- ggplot(combined_df, aes(x = time_value, y = gr)) + 
     geom_line(aes(col = "Est. using real data")) +
-    geom_line(aes(x = time_value, y = pred_gr, 
-                  col = "Est. using real data and forecast")) + 
+    geom_line(aes(x = time_value, y = baseline_gr, 
+                  col = "Est. using baseline forecaster")) +
+    geom_line(aes(x = time_value, y = ensembl_gr, 
+                  col = "Est. using ensemble forecaster")) + 
     labs(col ="Growth Rate", x = "Week", y = "Growth Rate (adjusted for bandwidth)") +
     geom_hline(yintercept = 0.5, col = "red")
+gr1
+```
 
+```
+## Warning: Removed 1 row(s) containing missing values (geom_path).
+```
+
+```
+## Warning: Removed 7 row(s) containing missing values (geom_path).
+## Removed 7 row(s) containing missing values (geom_path).
+```
+
+![](ensemble-evaluation_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+
+```r
 combined_df %>% filter(month(time_value) %in% c(6,7,8))
 ```
 
@@ -223,25 +281,26 @@ combined_df %>% filter(month(time_value) %in% c(6,7,8))
 ## An `epi_df` object, with metadata:
 ## * geo_type  = state
 ## * time_type = day
-## * as_of     = 2022-05-26 13:44:45
+## * as_of     = 2022-05-26 14:08:58
 ## 
-## # A tibble: 13 × 9
-##    geo_value time_value value population geo_type     gr surge pred_gr
-##  * <chr>     <date>     <dbl>      <dbl> <chr>     <dbl> <lgl>   <dbl>
-##  1 ma        2021-06-05  1157    6892503 state    -0.807 FALSE  -0.779
-##  2 ma        2021-06-12   896    6892503 state    -0.729 FALSE  -0.736
-##  3 ma        2021-06-19   518    6892503 state    -0.360 FALSE  -0.730
-##  4 ma        2021-06-26   384    6892503 state     0.842 TRUE   -0.695
-##  5 ma        2021-07-03   400    6892503 state     3.39  TRUE   -0.598
-##  6 ma        2021-07-10   692    6892503 state     6.81  TRUE   -0.284
-##  7 ma        2021-07-17  1442    6892503 state     6.61  TRUE    0.684
-##  8 ma        2021-07-24  2908    6892503 state     4.25  TRUE    1.24 
-##  9 ma        2021-07-31  4600    6892503 state     2.53  TRUE    1.19 
-## 10 ma        2021-08-07  6615    6892503 state     1.52  TRUE    0.888
-## 11 ma        2021-08-14  8091    6892503 state     0.915 TRUE    0.476
-## 12 ma        2021-08-21  9249    6892503 state     0.654 TRUE    0.304
-## 13 ma        2021-08-28 10060    6892503 state     0.442 FALSE   0.181
-## # … with 1 more variable: surge_pred <lgl>
+## # A tibble: 13 × 11
+##    geo_value time_value  value population geo_type      gr surge ensembl_gr
+##  * <chr>     <date>      <dbl>      <dbl> <chr>      <dbl> <lgl>      <dbl>
+##  1 ca        2021-06-05   6325   39512223 state    -0.293  FALSE    -0.484 
+##  2 ca        2021-06-12   7098   39512223 state    -0.0297 FALSE    -0.307 
+##  3 ca        2021-06-19   6748   39512223 state     0.663  TRUE     -0.333 
+##  4 ca        2021-06-26  10369   39512223 state     1.90   TRUE     -0.150 
+##  5 ca        2021-07-03   3420   39512223 state     4.23   TRUE     -0.0702
+##  6 ca        2021-07-10  13343   39512223 state     5.72   TRUE      0.510 
+##  7 ca        2021-07-17  27337   39512223 state     4.30   TRUE      1.16  
+##  8 ca        2021-07-24  44416   39512223 state     2.98   TRUE      1.93  
+##  9 ca        2021-07-31  59501   39512223 state     1.69   TRUE      1.12  
+## 10 ca        2021-08-07  96376   39512223 state     0.709  TRUE      0.518 
+## 11 ca        2021-08-14  88468   39512223 state     0.277  FALSE     0.358 
+## 12 ca        2021-08-21 108097   39512223 state    -0.0665 FALSE     0.242 
+## 13 ca        2021-08-28  95612   39512223 state    -0.292  FALSE    -0.0503
+## # … with 3 more variables: baseline_gr <dbl>, surge_ensembl <lgl>,
+## #   surge_baseline <lgl>
 ```
 
 
@@ -252,13 +311,18 @@ Plotting incident cases and surge classification
 p1 <- ggplot(combined_df, aes(x = time_value, y = value)) +
     geom_point(aes(col = surge)) + 
     geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
+    labs(x = "Week", col = "Surge", y = "Incident cases", title = "Computed from real data")
 p2 <- ggplot(combined_df, aes(x = time_value, y = value)) + 
-    geom_point(aes(col = surge_pred)) + 
+    geom_point(aes(col = surge_ensembl)) + 
     geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
+    labs(x = "Week", col = "Surge", y = "Incident cases", title = "Nowcasting w/ Ensemble Forecaster")
 
-p1 /p2
+p3 <- ggplot(combined_df, aes(x = time_value, y = value)) + 
+    geom_point(aes(col = surge_baseline)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Surge", y = "Incident cases", title = "Nowcasting w/ Baseline Forecaster")
+
+p1 /p2/p3 + plot_layout(guides = "collect")
 ```
 
 ![](ensemble-evaluation_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
@@ -266,23 +330,34 @@ p1 /p2
 # Misclassification rate    
 
 
+Ensemble Model  
+
+
 ```r
-combined_df %>% filter(!is.na(surge_pred)) %>% 
-    summarise(misclass_ensemble = mean(surge != surge_pred), 
+print("Ensemble model")
+```
+
+```
+## [1] "Ensemble model"
+```
+
+```r
+combined_df %>% filter(!is.na(surge_ensembl)) %>% 
+    summarise(misclass = mean(surge != surge_ensembl), 
               misclass_never = mean(surge),
-              sens = sum(surge & surge_pred)/sum(surge), 
-              spec = sum(!surge & !surge_pred)/sum(!surge))
+              sens = sum(surge & surge_ensembl)/sum(surge), 
+              spec = sum(!surge & !surge_ensembl)/sum(!surge))
 ```
 
 ```
 ## # A tibble: 1 × 4
-##   misclass_ensemble misclass_never  sens  spec
-##               <dbl>          <dbl> <dbl> <dbl>
-## 1             0.174          0.326 0.467     1
+##   misclass misclass_never  sens  spec
+##      <dbl>          <dbl> <dbl> <dbl>
+## 1    0.109          0.217   0.5     1
 ```
 
 ```r
-pROC::roc(surge ~ pred_gr, data = combined_df, subset = !is.na(surge_pred))
+pROC::roc(surge ~ ensembl_gr, data = combined_df, subset = !is.na(surge_ensembl))
 ```
 
 ```
@@ -296,9 +371,55 @@ pROC::roc(surge ~ pred_gr, data = combined_df, subset = !is.na(surge_pred))
 ```
 ## 
 ## Call:
-## roc.formula(formula = surge ~ pred_gr, data = combined_df, subset = !is.na(surge_pred))
+## roc.formula(formula = surge ~ ensembl_gr, data = combined_df,     subset = !is.na(surge_ensembl))
 ## 
-## Data: pred_gr in 31 controls (surge FALSE) < 15 cases (surge TRUE).
-## Area under the curve: 0.8129
+## Data: ensembl_gr in 36 controls (surge FALSE) < 10 cases (surge TRUE).
+## Area under the curve: 0.8278
 ```
 
+Baseline model  
+
+
+```r
+print("Baseline model")
+```
+
+```
+## [1] "Baseline model"
+```
+
+```r
+combined_df %>% filter(!is.na(surge_baseline)) %>% 
+    summarise(misclass = mean(surge != surge_baseline), 
+              misclass_never = mean(surge),
+              sens = sum(surge & surge_baseline)/sum(surge), 
+              spec = sum(!surge & !surge_baseline)/sum(!surge))
+```
+
+```
+## # A tibble: 1 × 4
+##   misclass misclass_never  sens  spec
+##      <dbl>          <dbl> <dbl> <dbl>
+## 1    0.130          0.217   0.4     1
+```
+
+```r
+pROC::roc(surge ~ baseline_gr, data = combined_df, subset = !is.na(surge_baseline))
+```
+
+```
+## Setting levels: control = FALSE, case = TRUE
+```
+
+```
+## Setting direction: controls < cases
+```
+
+```
+## 
+## Call:
+## roc.formula(formula = surge ~ baseline_gr, data = combined_df,     subset = !is.na(surge_baseline))
+## 
+## Data: baseline_gr in 36 controls (surge FALSE) < 10 cases (surge TRUE).
+## Area under the curve: 0.7889
+```

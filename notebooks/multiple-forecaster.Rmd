@@ -1,5 +1,5 @@
 ---
-title: "Evaluating the ensemble point forecast"
+title: "Evaluating the multiple forecasters"
 author: "Quang Nguyen"
 date: "Last compiled on `r format(Sys.time(), '%Y-%m-%d')`"
 output: 
@@ -30,7 +30,7 @@ library(lubridate)
 library(rlang)
 library(patchwork)
 library(pROC)
-here::i_am(path = "notebooks/ensemble-evaluation.Rmd")
+here::i_am(path = "notebooks/multiple-forecaster.Rmd")
 source(here("R", "utils.R"))
 # (settings <- get_settings(start_date = "2020-06-01", end_date = "2022-03-01"))
 theme_set(theme_bw())
@@ -40,13 +40,12 @@ First let's set some parameters
 
 ```{r}
 d_range <- seq(ymd("2021-01-01"), ymd("2022-01-01"), by = 7)
-curr_date <- "2022-01-02"
+curr_date <- "2022-01-01"
 h <- 4
 wk_ahead <- 1
 inc_case_targets <- paste(1:h, "wk ahead inc case")
 surge_thresh <- 0.5
 min_inc <- 20
-state <- "California"
 ```
 
 # Loading forecasts and underlying data
@@ -55,24 +54,11 @@ Using `covidHubUtils` and `zoltar` we load underlying data as well as forecasts
 
 ```{r}
 
-pred_ensembl <- load_forecasts(
+pred_case <- load_forecasts(
     models = "COVIDhub-ensemble", 
     dates = d_range, 
     date_window_size = 6,
-    locations = state, 
-    types = "point", 
-    targets = inc_case_targets, 
-    source = "zoltar", 
-    verbose = FALSE, 
-    as_of = curr_date, 
-    hub = c("US")
-)
-
-pred_baseline <- load_forecasts(
-    models = "COVIDhub-baseline", 
-    dates = d_range, 
-    date_window_size = 6, 
-    locations = state, 
+    locations = "Massachusetts", 
     types = "point", 
     targets = inc_case_targets, 
     source = "zoltar", 
@@ -84,10 +70,10 @@ pred_baseline <- load_forecasts(
 truth_data <- load_truth(
     truth_source = "JHU", 
     target_variable = "inc case", 
-    locations = state
+    locations = "Massachusetts"
 )
 
-true_range <- pred_ensembl %>% pull(target_end_date) %>% 
+true_range <- pred_case %>% pull(target_end_date) %>% 
     unique() %>% 
     lubridate::as_date()
 
@@ -160,21 +146,12 @@ mismatch_slide <- function(slide_df, pred, h){
         return(gr)
     }
 }
-combined_df <- truth_epidf %>% 
-    epi_slide(~mismatch_slide(slide_df = .x, pred = pred_ensembl, h = h), n = 2 * 7 * h, align = "center", 
-              new_col_name = "ensembl_gr") %>%
-    epi_slide(~mismatch_slide(slide_df = .x, pred = pred_baseline, h = h), n = 2 * 7 * h, align = "center", 
-              new_col_name = "baseline_gr")
-    
-combined_df <- combined_df %>% mutate(surge_ensembl = case_when(
-    ensembl_gr >= surge_thresh & value >= min_inc ~ TRUE,
-    is.na(ensembl_gr) ~ NA,
+combined_df <- truth_epidf %>% epi_slide(~mismatch_slide(slide_df = .x, pred = pred_case, h = h), 
+                                          n = 2 * 7 * h, align = "center", new_col_name = "pred_gr")
+combined_df <- combined_df %>% mutate(surge_pred = case_when(
+    pred_gr >= surge_thresh & value >= min_inc ~ TRUE,
+    is.na(pred_gr) ~ NA,
     TRUE ~ FALSE
-)) %>% mutate(
-    surge_baseline = case_when(
-        baseline_gr >= surge_thresh & value >= min_inc ~ TRUE,
-        is.na(baseline_gr) ~ NA,
-        TRUE ~ FALSE
 ))
 head(combined_df, n = 20)
 ```
@@ -184,13 +161,11 @@ Plotting growth rate when estimated
 ```{r}
 gr1 <- ggplot(combined_df, aes(x = time_value, y = gr)) + 
     geom_line(aes(col = "Est. using real data")) +
-    geom_line(aes(x = time_value, y = baseline_gr, 
-                  col = "Est. using baseline forecaster")) +
-    geom_line(aes(x = time_value, y = ensembl_gr, 
-                  col = "Est. using ensemble forecaster")) + 
+    geom_line(aes(x = time_value, y = pred_gr, 
+                  col = "Est. using real data and forecast")) + 
     labs(col ="Growth Rate", x = "Week", y = "Growth Rate (adjusted for bandwidth)") +
     geom_hline(yintercept = 0.5, col = "red")
-gr1
+
 combined_df %>% filter(month(time_value) %in% c(6,7,8))
 
 ```
@@ -202,44 +177,24 @@ Plotting incident cases and surge classification
 p1 <- ggplot(combined_df, aes(x = time_value, y = value)) +
     geom_point(aes(col = surge)) + 
     geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Surge", y = "Incident cases", title = "Computed from real data")
+    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
 p2 <- ggplot(combined_df, aes(x = time_value, y = value)) + 
-    geom_point(aes(col = surge_ensembl)) + 
+    geom_point(aes(col = surge_pred)) + 
     geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Surge", y = "Incident cases", title = "Nowcasting w/ Ensemble Forecaster")
+    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
 
-p3 <- ggplot(combined_df, aes(x = time_value, y = value)) + 
-    geom_point(aes(col = surge_baseline)) + 
-    geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Surge", y = "Incident cases", title = "Nowcasting w/ Baseline Forecaster")
-
-p1 /p2/p3 + plot_layout(guides = "collect")
+p1 /p2
 
 ```
 
 # Misclassification rate    
 
-
-Ensemble Model  
-
 ```{r}
-print("Ensemble model")
-combined_df %>% filter(!is.na(surge_ensembl)) %>% 
-    summarise(misclass = mean(surge != surge_ensembl), 
+combined_df %>% filter(!is.na(surge_pred)) %>% 
+    summarise(misclass_ensemble = mean(surge != surge_pred), 
               misclass_never = mean(surge),
-              sens = sum(surge & surge_ensembl)/sum(surge), 
-              spec = sum(!surge & !surge_ensembl)/sum(!surge))
-pROC::roc(surge ~ ensembl_gr, data = combined_df, subset = !is.na(surge_ensembl))
+              sens = sum(surge & surge_pred)/sum(surge), 
+              spec = sum(!surge & !surge_pred)/sum(!surge))
+pROC::roc(surge ~ pred_gr, data = combined_df, subset = !is.na(surge_pred))
 ```
 
-Baseline model  
-
-```{r}
-print("Baseline model")
-combined_df %>% filter(!is.na(surge_baseline)) %>% 
-    summarise(misclass = mean(surge != surge_baseline), 
-              misclass_never = mean(surge),
-              sens = sum(surge & surge_baseline)/sum(surge), 
-              spec = sum(!surge & !surge_baseline)/sum(!surge))
-pROC::roc(surge ~ baseline_gr, data = combined_df, subset = !is.na(surge_baseline))
-```
