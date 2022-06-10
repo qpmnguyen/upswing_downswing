@@ -1,0 +1,143 @@
+---
+title: "Surge calculation using epiprocess"
+author: "Quang Nguyen"
+date: "`r format(Sys.Date())`"
+output:
+    #github_document: default
+    html_document:
+        keep_md: yes
+        toc: true
+        toc_float: true
+        code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setting up
+
+```{r, message=FALSE}
+library(here)
+library(covidcast)
+library(epiprocess)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(patchwork)
+here::i_am(path = "notebooks/update-latest-data.Rmd")
+source(here("R", "utils.R"))
+(settings <- get_settings(start_date = "2021-01-01", end_date = "2022-03-01"))
+```
+
+# Load data
+
+For cumulative data, using confirmed cumulative numbers and aggregate by epiweek. For incidence data, using the 7-day average numbers.
+
+```{r load_data, cache=TRUE, message=TRUE}
+print("Cumulative data")
+(df_cum <- covidcast_signal(data_source = "jhu-csse", 
+                          signal = "confirmed_cumulative_num", 
+                          start_day = settings$start_date, 
+                          end_day = settings$end_date, 
+                          geo_type = "state",
+                          geo_values = c("ma"),
+                          as_of = Sys.Date()) %>% 
+        as_epi_df(geo_type = "state", time_type = "day", as_of = max(.$issue)) %>%
+        select(geo_value, time_value, cases = value) %>% as_tsibble() %>% 
+        index_by(epiweek = ~yearweek(., week_start = 7)) %>% 
+        group_by(geo_value) %>% 
+        summarize(cases = max(cases)) %>% ungroup() %>% 
+        as_tibble() %>% dplyr::rename(time_value = epiweek) %>% 
+        as_epi_df(geo_type = "state", time_type = "week"))
+
+print("Incidence data")
+(df_inc <- covidcast_signal(data_source = "jhu-csse", 
+                          signal = "confirmed_incidence_num", 
+                          start_day = settings$start_date, 
+                          end_day = settings$end_date, 
+                          geo_type = "state",
+                          geo_values = c("ma"),
+                          as_of = Sys.Date()) %>% 
+        as_epi_df(geo_type = "state", time_type = "day", as_of = max(.$issue)) %>% 
+        select(geo_value, time_value, cases = value) %>% as_tsibble() %>%
+        index_by(epiweek = ~yearweek(., week_start = 7)) %>% 
+        group_by(geo_value) %>% 
+        summarise(cases = sum(cases)) %>% ungroup() %>% 
+        as_tibble() %>% dplyr::rename(time_value = epiweek) %>% 
+        as_epi_df(geo_type = "state", time_type = "week")
+        
+)
+
+
+```
+
+
+# Compute upswings on real data
+
+The `rel_change` method in the `growth_rate` function from `epiprocess` defines relative change at focal time $T$ with bandwith $h$ as:
+
+$$\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) = \frac{1}{h} R^{h}_{T + h}$$
+
+where $R_{T+h}^{h}$ is the **the actual** $h$-epiweek-incidence relative change as defined in notebook 7 on computing upswings on incidence data. Using the `rel_change` option in the `growth_rate` function from `epiprocess` with bandwidth being `h`.
+
+```{r surge_inc}
+
+surge_inc <- df_inc %>% mutate(growth_raw = growth_rate(time_value, cases, method = "rel_change", 
+                                                        h = settings$h), 
+                  growth_adj = growth_raw * settings$h) %>%
+    mutate(surge_raw = case_when(
+        growth_raw >= settings$upswing_thresh & cases >= settings$min_thresh * settings$h ~ TRUE, 
+        growth_raw < settings$upswing_thresh & cases >= settings$min_thresh * settings$h ~ FALSE,
+        cases < settings$min_thresh * settings$h ~ NA
+    )) %>% 
+    mutate(surge_adj = case_when(
+        growth_adj >= settings$upswing_thresh & cases >= settings$min_thresh * settings$h ~ TRUE, 
+        growth_adj < settings$upswing_thresh & cases >= settings$min_thresh * settings$h ~ FALSE,
+        cases < settings$min_thresh * settings$h ~ NA
+    ))
+
+
+p1 <- ggplot(surge_inc, aes(x = time_value, y = cases)) + geom_point(aes(col = surge_raw)) + theme_bw() + 
+    labs(x = "Epiweek", y = "Incident cases", col = "Surge", title = "Using growth_rate function")
+p2 <- ggplot(surge_inc, aes(x = time_value, y = cases)) + geom_point(aes(col = surge_adj)) + theme_bw() + 
+    labs(x = "Epiweek", y = "Incident cases", col = "Surge", title = "growth_rate multiplied by bandwith")
+```
+
+```{r surge_cum}
+
+surge_cum <- df_cum %>% mutate(prev_cumulative = lag(cases, order_by = time_value, n = settings$h), 
+    h_ew_inc = cases - prev_cumulative, 
+    prev_h_ew_inc = lag(h_ew_inc, order_by = time_value, n = settings$h), 
+    rel_change = (h_ew_inc - prev_h_ew_inc) / prev_h_ew_inc, 
+    surge = case_when(
+        rel_change >= settings$upswing_thresh & h_ew_inc >= settings$min_thresh * settings$h ~ TRUE,
+        rel_change < settings$upswing_thresh & h_ew_inc >= settings$min_thresh * settings$h ~ FALSE,
+        h_ew_inc < settings$min_thresh * settings$h ~ NA),
+    prev_surge = lag(surge, order_by = time_value, n = settings$h), 
+    cumulative = cases,
+    inc = cases - lag(cases, order_by = time_value),
+    target_end_date = time_value)
+
+p3 <- surge_cum %>% 
+    ggplot(aes(x = time_value, y = inc, col = surge)) + geom_point() + 
+    theme_bw() + labs(x = "Epiweek", y = "Incidence cases", title = "Surge calculated using cumulative data") 
+
+p1 / p2 / p3    
+
+```
+
+
+Unfortunately, using the cumulative formulation, the real values were lagged by a factor of `h`.  
+
+```{r}
+head(tibble(
+    epiprocess = surge_inc$growth_adj,
+    reference = surge_cum$rel_change
+), n = 10)
+```
+However, once corrected by phase, the results seems to be identical between using `growth_rate` and the original cumulative code.  
+
+
+
+

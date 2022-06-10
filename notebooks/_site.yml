@@ -1,0 +1,12 @@
+name: "Upswing Downswing Project"
+navbar:
+  title: "Project Website"
+  left:
+    - text: "Home"
+      href: index.html
+    - text: Analyses
+      menu:
+        - text: "Upswings compared to CDC"
+          href: upswing-CDC.html
+        - text: "Evaluating upswing classification for ensemble model"
+          href: ensemble-evaluation.html

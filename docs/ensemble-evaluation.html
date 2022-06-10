@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Quang Nguyen" />
+
+
+<title>Evaluating the ensemble point forecast</title>
+
+<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Project Website</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Analyses
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="upswing-CDC.html">Upswings compared to CDC</a>
+    </li>
+    <li>
+      <a href="ensemble-evaluation.html">Evaluating upswing classification for ensemble model</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Evaluating the ensemble point forecast</h1>
+<h4 class="author">Quang Nguyen</h4>
+<h4 class="date">Last compiled on 2022-05-26</h4>
+
+</div>
+
+
+<div id="data-pre-loading-and-processing" class="section level1">
+<h1>Data pre-loading and processing</h1>
+<pre class="r"><code>library(here)
+library(covidcast)
+library(epiprocess)
+library(zoltr)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(covidHubUtils)
+library(lubridate)
+library(rlang)
+library(patchwork)
+library(pROC)
+here::i_am(path = &quot;notebooks/ensemble-evaluation.Rmd&quot;)
+source(here(&quot;R&quot;, &quot;utils.R&quot;))
+# (settings &lt;- get_settings(start_date = &quot;2020-06-01&quot;, end_date = &quot;2022-03-01&quot;))
+theme_set(theme_bw())</code></pre>
+<p>First let’s set some parameters</p>
+<pre class="r"><code>d_range &lt;- seq(ymd(&quot;2021-01-01&quot;), ymd(&quot;2022-01-01&quot;), by = 7)
+curr_date &lt;- &quot;2022-01-02&quot;
+h &lt;- 4
+wk_ahead &lt;- 1
+inc_case_targets &lt;- paste(1:h, &quot;wk ahead inc case&quot;)
+surge_thresh &lt;- 0.5
+min_inc &lt;- 20
+state &lt;- &quot;California&quot;</code></pre>
+</div>
+<div id="loading-forecasts-and-underlying-data" class="section level1">
+<h1>Loading forecasts and underlying data</h1>
+<p>Using <code>covidHubUtils</code> and <code>zoltar</code> we load
+underlying data as well as forecasts</p>
+<pre class="r"><code>pred_ensembl &lt;- load_forecasts(
+    models = &quot;COVIDhub-ensemble&quot;, 
+    dates = d_range, 
+    date_window_size = 6,
+    locations = state, 
+    types = &quot;point&quot;, 
+    targets = inc_case_targets, 
+    source = &quot;zoltar&quot;, 
+    verbose = FALSE, 
+    as_of = curr_date, 
+    hub = c(&quot;US&quot;)
+)</code></pre>
+<pre><code>## get_token(): POST: https://zoltardata.com/api-token-auth/</code></pre>
+<pre><code>## get_resource(): GET: https://zoltardata.com/api/projects/</code></pre>
+<pre><code>## get_resource(): GET: https://zoltardata.com/api/project/44/models/</code></pre>
+<pre><code>## get_resource(): GET: https://zoltardata.com/api/project/44/timezeros/</code></pre>
+<pre class="r"><code>pred_baseline &lt;- load_forecasts(
+    models = &quot;COVIDhub-baseline&quot;, 
+    dates = d_range, 
+    date_window_size = 6, 
+    locations = state, 
+    types = &quot;point&quot;, 
+    targets = inc_case_targets, 
+    source = &quot;zoltar&quot;, 
+    verbose = FALSE, 
+    as_of = curr_date, 
+    hub = c(&quot;US&quot;)
+)</code></pre>
+<pre><code>## get_token(): POST: https://zoltardata.com/api-token-auth/</code></pre>
+<pre><code>## get_resource(): GET: https://zoltardata.com/api/projects/</code></pre>
+<pre><code>## get_resource(): GET: https://zoltardata.com/api/project/44/models/</code></pre>
+<pre><code>## get_resource(): GET: https://zoltardata.com/api/project/44/timezeros/</code></pre>
+<pre class="r"><code>truth_data &lt;- load_truth(
+    truth_source = &quot;JHU&quot;, 
+    target_variable = &quot;inc case&quot;, 
+    locations = state
+)
+
+true_range &lt;- pred_ensembl %&gt;% pull(target_end_date) %&gt;% 
+    unique() %&gt;% 
+    lubridate::as_date()
+
+truth_epidf &lt;- truth_data %&gt;% 
+    select(-c(model, location, target_variable, location_name, 
+              abbreviation, full_location_name)) %&gt;% 
+    dplyr::rename(&quot;time_value&quot; = &quot;target_end_date&quot;) %&gt;%
+    filter(time_value %in% true_range) %&gt;%
+    as_epi_df(geo_type = &quot;state&quot;)</code></pre>
+</div>
+<div
+id="surge-classification-using-relative-change-growth-rate-formulation"
+class="section level1">
+<h1>Surge classification using relative change growth rate
+formulation</h1>
+<p>We define surge for a given date using relative change growth rate
+formulation times the bandwidth using the implementation from
+<code>epiprocess</code>:</p>
+<p><span class="math display">\[\frac{1}{h} *
+\left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} *
+\left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} *
+\left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t =
+T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) =
+\frac{1}{h} R^{h}_{T + h}\]</span></p>
+<p>A surge is defined for time-point <span
+class="math inline">\(T\)</span> as the difference in cumulative
+incident cases between the periods of <span
+class="math inline">\(T+1\)</span> and <span
+class="math inline">\(T+h\)</span> and <span
+class="math inline">\(T\)</span> and <span
+class="math inline">\(T-h\)</span>. As such, an <span
+class="math inline">\(h\)</span>-week ahead forecaster is a nowcaster of
+whether or not we’re currently in a surge.</p>
+<pre class="r"><code>truth_epidf &lt;- truth_epidf %&gt;% 
+    mutate(gr = growth_rate(y = value, method = &quot;rel_change&quot;, h = h) * h) %&gt;%
+    mutate(surge = case_when(
+        gr &gt;= surge_thresh &amp; value &gt;= min_inc ~ TRUE,
+        TRUE ~ FALSE
+    ))
+
+ggplot(truth_epidf, aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge), size = 2.5) + geom_line(alpha = 0.5) + 
+    labs(x = &quot;Weekly data&quot;, y = &quot;Incident cases by week&quot;)</code></pre>
+<p><img
+src="ensemble-evaluation_files/figure-html/unnamed-chunk-4-1.png" /><!-- --></p>
+</div>
+<div id="nowcasting-surges" class="section level1">
+<h1>Nowcasting surges</h1>
+<p>Here we use the following procedures for a focal timepoint <span
+class="math inline">\(T\)</span> and bandwidth <span
+class="math inline">\(h\)</span> (for example, 4)</p>
+<ol style="list-style-type: decimal">
+<li>We take a time period from <span class="math inline">\(T+1-
+h\)</span> to <span class="math inline">\(T+h\)</span>. For example at
+2021-01-23, we’d be taking the period from 2021-01-02 to
+2021-02-20.<br />
+</li>
+<li>We take the truth period to be from <span
+class="math inline">\(T+1-h\)</span> to <span
+class="math inline">\(T\)</span> (inclusive) and the forecasting period
+to be from <span class="math inline">\(T+1\)</span> to <span
+class="math inline">\(T+h\)</span>. The truth period would have real
+underlying incident cases while the forecasting period has forecast
+incident cases at times 1-<span class="math inline">\(h\)</span> weeks
+ahead. Due to the forecasting date being on Monday instead of exactly
+one week before the proposed target date, we take forecast incident
+values from the forecast date closest to the time period defined at
+<span class="math inline">\(T+1\)</span>. For example, at 2021-01-23, we
+would take forecast values for 2021-01-30 onwards from a forecast date
+of 2021-01-25.<br />
+</li>
+<li>We compute the growth rate at time <span
+class="math inline">\(T\)</span> using these two periods as per the
+formula above<br />
+</li>
+<li>We then classify periods as surges using the definition and
+thresholds defined above.</li>
+</ol>
+<pre class="r"><code># this function combines real case counts from time points t-h to t and forecasted 
+# case counts from t+1 to t+h. Growth rate at time t is then estimated using the relative change 
+# method
+mismatch_slide &lt;- function(slide_df, pred, h){
+    query_dates &lt;- slide_df$time_value
+    req_len &lt;- h * 2
+    # if not enough weeks for prediction
+    if (length(query_dates) != req_len){
+        return(NA_real_)
+    } else {
+        t_date &lt;- query_dates[1:(req_len - h)]
+        ref &lt;- tail(t_date, n = 1)
+        p_date &lt;- query_dates[(req_len - h + 1):req_len]
+        t_data &lt;- slide_df %&gt;% filter(time_value %in% t_date) %&gt;% 
+            mutate(type = &quot;true&quot;)
+        # due to weird issues, the ref date + 1 week should be the 1 week ahead forecast
+        f_date &lt;- pred %&gt;% filter(target_end_date == head(p_date, n = 1) &amp; horizon == 1) %&gt;% 
+            pull(forecast_date) %&gt;% unique()
+        p_data &lt;- pred %&gt;% 
+            filter(forecast_date == f_date) %&gt;%
+            filter(target_end_date %in% p_date) %&gt;% 
+            select(geo_value, target_end_date, value, population, geo_type) %&gt;%
+            dplyr::rename(&quot;time_value&quot; = target_end_date) %&gt;%
+            mutate(type = &quot;pred&quot;)
+        combine &lt;- bind_rows(t_data, p_data)
+        gr &lt;- combine %&gt;% mutate(gr_pred = growth_rate(y = value, h = h, method = &quot;rel_change&quot;) * h) %&gt;% 
+            filter(time_value == ref) %&gt;% pull(gr_pred)
+        return(gr)
+    }
+}
+combined_df &lt;- truth_epidf %&gt;% 
+    epi_slide(~mismatch_slide(slide_df = .x, pred = pred_ensembl, h = h), n = 2 * 7 * h, align = &quot;center&quot;, 
+              new_col_name = &quot;ensembl_gr&quot;) %&gt;%
+    epi_slide(~mismatch_slide(slide_df = .x, pred = pred_baseline, h = h), n = 2 * 7 * h, align = &quot;center&quot;, 
+              new_col_name = &quot;baseline_gr&quot;)
+    
+combined_df &lt;- combined_df %&gt;% mutate(surge_ensembl = case_when(
+    ensembl_gr &gt;= surge_thresh &amp; value &gt;= min_inc ~ TRUE,
+    is.na(ensembl_gr) ~ NA,
+    TRUE ~ FALSE
+)) %&gt;% mutate(
+    surge_baseline = case_when(
+        baseline_gr &gt;= surge_thresh &amp; value &gt;= min_inc ~ TRUE,
+        is.na(baseline_gr) ~ NA,
+        TRUE ~ FALSE
+))
+head(combined_df, n = 20)</code></pre>
+<pre><code>## # A tibble: 20 × 11
+##    geo_value time_value  value population geo_type     gr surge ensembl_gr
+##    &lt;chr&gt;     &lt;date&gt;      &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;     &lt;dbl&gt; &lt;lgl&gt;      &lt;dbl&gt;
+##  1 ca        2021-01-02 282497   39512223 state    -0.345 FALSE    NA     
+##  2 ca        2021-01-09 295841   39512223 state    -0.538 FALSE    NA     
+##  3 ca        2021-01-16 278986   39512223 state    -0.661 FALSE    NA     
+##  4 ca        2021-01-23 172432   39512223 state    -0.654 FALSE    -0.372 
+##  5 ca        2021-01-30 139252   39512223 state    -0.712 FALSE    -0.579 
+##  6 ca        2021-02-06  99000   39512223 state    -0.728 FALSE    -0.638 
+##  7 ca        2021-02-13  70859   39512223 state    -0.706 FALSE    -0.667 
+##  8 ca        2021-02-20  46817   39512223 state    -0.677 FALSE    -0.733 
+##  9 ca        2021-02-27  38767   39512223 state    -0.628 FALSE    -0.606 
+## 10 ca        2021-03-06  31361   39512223 state    -0.560 FALSE    -0.484 
+## 11 ca        2021-03-13  24407   39512223 state    -0.425 FALSE    -0.442 
+## 12 ca        2021-03-20  20605   39512223 state    -0.313 FALSE    -0.469 
+## 13 ca        2021-03-27  18770   39512223 state    -0.215 FALSE    -0.306 
+## 14 ca        2021-04-03  18805   39512223 state    -0.154 FALSE    -0.346 
+## 15 ca        2021-04-10  23056   39512223 state    -0.262 FALSE    -0.0961
+## 16 ca        2021-04-17  18480   39512223 state    -0.333 FALSE    -0.0632
+## 17 ca        2021-04-24  14314   39512223 state    -0.366 FALSE    -0.373 
+## 18 ca        2021-05-01  14034   39512223 state    -0.343 FALSE    -0.462 
+## 19 ca        2021-05-08  13133   39512223 state    -0.348 FALSE    -0.322 
+## 20 ca        2021-05-15  11277   39512223 state    -0.338 FALSE    -0.346 
+## # … with 3 more variables: baseline_gr &lt;dbl&gt;, surge_ensembl &lt;lgl&gt;,
+## #   surge_baseline &lt;lgl&gt;</code></pre>
+<p>Plotting growth rate when estimated</p>
+<pre class="r"><code>gr1 &lt;- ggplot(combined_df, aes(x = time_value, y = gr)) + 
+    geom_line(aes(col = &quot;Est. using real data&quot;)) +
+    geom_line(aes(x = time_value, y = baseline_gr, 
+                  col = &quot;Est. using baseline forecaster&quot;)) +
+    geom_line(aes(x = time_value, y = ensembl_gr, 
+                  col = &quot;Est. using ensemble forecaster&quot;)) + 
+    labs(col =&quot;Growth Rate&quot;, x = &quot;Week&quot;, y = &quot;Growth Rate (adjusted for bandwidth)&quot;) +
+    geom_hline(yintercept = 0.5, col = &quot;red&quot;)
+gr1</code></pre>
+<pre><code>## Warning: Removed 1 row(s) containing missing values (geom_path).</code></pre>
+<pre><code>## Warning: Removed 7 row(s) containing missing values (geom_path).
+## Removed 7 row(s) containing missing values (geom_path).</code></pre>
+<p><img
+src="ensemble-evaluation_files/figure-html/unnamed-chunk-6-1.png" /><!-- --></p>
+<pre class="r"><code>combined_df %&gt;% filter(month(time_value) %in% c(6,7,8))</code></pre>
+<pre><code>## An `epi_df` object, with metadata:
+## * geo_type  = state
+## * time_type = day
+## * as_of     = 2022-05-26 14:08:58
+## 
+## # A tibble: 13 × 11
+##    geo_value time_value  value population geo_type      gr surge ensembl_gr
+##  * &lt;chr&gt;     &lt;date&gt;      &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;      &lt;dbl&gt; &lt;lgl&gt;      &lt;dbl&gt;
+##  1 ca        2021-06-05   6325   39512223 state    -0.293  FALSE    -0.484 
+##  2 ca        2021-06-12   7098   39512223 state    -0.0297 FALSE    -0.307 
+##  3 ca        2021-06-19   6748   39512223 state     0.663  TRUE     -0.333 
+##  4 ca        2021-06-26  10369   39512223 state     1.90   TRUE     -0.150 
+##  5 ca        2021-07-03   3420   39512223 state     4.23   TRUE     -0.0702
+##  6 ca        2021-07-10  13343   39512223 state     5.72   TRUE      0.510 
+##  7 ca        2021-07-17  27337   39512223 state     4.30   TRUE      1.16  
+##  8 ca        2021-07-24  44416   39512223 state     2.98   TRUE      1.93  
+##  9 ca        2021-07-31  59501   39512223 state     1.69   TRUE      1.12  
+## 10 ca        2021-08-07  96376   39512223 state     0.709  TRUE      0.518 
+## 11 ca        2021-08-14  88468   39512223 state     0.277  FALSE     0.358 
+## 12 ca        2021-08-21 108097   39512223 state    -0.0665 FALSE     0.242 
+## 13 ca        2021-08-28  95612   39512223 state    -0.292  FALSE    -0.0503
+## # … with 3 more variables: baseline_gr &lt;dbl&gt;, surge_ensembl &lt;lgl&gt;,
+## #   surge_baseline &lt;lgl&gt;</code></pre>
+<p>Plotting incident cases and surge classification</p>
+<pre class="r"><code>p1 &lt;- ggplot(combined_df, aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Surge&quot;, y = &quot;Incident cases&quot;, title = &quot;Computed from real data&quot;)
+p2 &lt;- ggplot(combined_df, aes(x = time_value, y = value)) + 
+    geom_point(aes(col = surge_ensembl)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Surge&quot;, y = &quot;Incident cases&quot;, title = &quot;Nowcasting w/ Ensemble Forecaster&quot;)
+
+p3 &lt;- ggplot(combined_df, aes(x = time_value, y = value)) + 
+    geom_point(aes(col = surge_baseline)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Surge&quot;, y = &quot;Incident cases&quot;, title = &quot;Nowcasting w/ Baseline Forecaster&quot;)
+
+p1 /p2/p3 + plot_layout(guides = &quot;collect&quot;)</code></pre>
+<p><img
+src="ensemble-evaluation_files/figure-html/unnamed-chunk-7-1.png" /><!-- --></p>
+</div>
+<div id="misclassification-rate" class="section level1">
+<h1>Misclassification rate</h1>
+<p>Ensemble Model</p>
+<pre class="r"><code>print(&quot;Ensemble model&quot;)</code></pre>
+<pre><code>## [1] &quot;Ensemble model&quot;</code></pre>
+<pre class="r"><code>combined_df %&gt;% filter(!is.na(surge_ensembl)) %&gt;% 
+    summarise(misclass = mean(surge != surge_ensembl), 
+              misclass_never = mean(surge),
+              sens = sum(surge &amp; surge_ensembl)/sum(surge), 
+              spec = sum(!surge &amp; !surge_ensembl)/sum(!surge))</code></pre>
+<pre><code>## # A tibble: 1 × 4
+##   misclass misclass_never  sens  spec
+##      &lt;dbl&gt;          &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1    0.109          0.217   0.5     1</code></pre>
+<pre class="r"><code>pROC::roc(surge ~ ensembl_gr, data = combined_df, subset = !is.na(surge_ensembl))</code></pre>
+<pre><code>## Setting levels: control = FALSE, case = TRUE</code></pre>
+<pre><code>## Setting direction: controls &lt; cases</code></pre>
+<pre><code>## 
+## Call:
+## roc.formula(formula = surge ~ ensembl_gr, data = combined_df,     subset = !is.na(surge_ensembl))
+## 
+## Data: ensembl_gr in 36 controls (surge FALSE) &lt; 10 cases (surge TRUE).
+## Area under the curve: 0.8278</code></pre>
+<p>Baseline model</p>
+<pre class="r"><code>print(&quot;Baseline model&quot;)</code></pre>
+<pre><code>## [1] &quot;Baseline model&quot;</code></pre>
+<pre class="r"><code>combined_df %&gt;% filter(!is.na(surge_baseline)) %&gt;% 
+    summarise(misclass = mean(surge != surge_baseline), 
+              misclass_never = mean(surge),
+              sens = sum(surge &amp; surge_baseline)/sum(surge), 
+              spec = sum(!surge &amp; !surge_baseline)/sum(!surge))</code></pre>
+<pre><code>## # A tibble: 1 × 4
+##   misclass misclass_never  sens  spec
+##      &lt;dbl&gt;          &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1    0.130          0.217   0.4     1</code></pre>
+<pre class="r"><code>pROC::roc(surge ~ baseline_gr, data = combined_df, subset = !is.na(surge_baseline))</code></pre>
+<pre><code>## Setting levels: control = FALSE, case = TRUE</code></pre>
+<pre><code>## Setting direction: controls &lt; cases</code></pre>
+<pre><code>## 
+## Call:
+## roc.formula(formula = surge ~ baseline_gr, data = combined_df,     subset = !is.na(surge_baseline))
+## 
+## Data: baseline_gr in 36 controls (surge FALSE) &lt; 10 cases (surge TRUE).
+## Area under the curve: 0.7889</code></pre>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
