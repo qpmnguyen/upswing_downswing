@@ -50,15 +50,16 @@ min_inc <- 20
 
 # Loading forecasts and underlying data
 
-Using `covidHubUtils` and `zoltar` we load underlying data as well as forecasts
+Using `covidHubUtils` and `zoltar` we load underlying data as well as forecasts for models available in the US hub  
 
-```{r}
+```{r, cache=TRUE}
 
-pred_case <- load_forecasts(
-    models = "COVIDhub-ensemble", 
+models <- get_all_models(source = "zoltar", hub = "US")
+assessing_time <- load_forecasts(
+    models = models, 
     dates = d_range, 
     date_window_size = 6,
-    locations = "Massachusetts", 
+    locations = "California", 
     types = "point", 
     targets = inc_case_targets, 
     source = "zoltar", 
@@ -67,10 +68,39 @@ pred_case <- load_forecasts(
     hub = c("US")
 )
 
+ggplot(assessing_time, aes(x = model, y = target_end_date)) + geom_point() + 
+    coord_flip()
+
+
+n_dates <- assessing_time %>% filter(model == "COVIDhub-ensemble") %>% 
+    count() %>% pull(n)
+
+
+filt_models <- assessing_time %>% group_by(model) %>% count() %>% 
+    filter(n >= n_dates) %>% arrange(-n) %>% ungroup() %>% slice(1:10) %>% pull(model)
+
+ggplot(assessing_time %>% filter(model %in% filt_models, horizon == 1), 
+       aes(x = model, y = target_end_date)) + geom_point() + coord_flip()
+```
+
+
+```{r, cache=TRUE}
+pred_case <- load_forecasts(
+    models = filt_models, 
+    dates = d_range, 
+    date_window_size = 6,
+    locations = state.name, 
+    types = "point", 
+    targets = inc_case_targets, 
+    source = "zoltar", 
+    verbose = FALSE, 
+    as_of = curr_date, 
+    hub = c("US")
+)
 truth_data <- load_truth(
     truth_source = "JHU", 
     target_variable = "inc case", 
-    locations = "Massachusetts"
+    locations = state.name
 )
 
 true_range <- pred_case %>% pull(target_end_date) %>% 
@@ -99,10 +129,28 @@ truth_epidf <- truth_epidf %>%
     mutate(surge = case_when(
         gr >= surge_thresh & value >= min_inc ~ TRUE,
         TRUE ~ FALSE
-    ))
+    )) 
 
-ggplot(truth_epidf, aes(x = time_value, y = value)) +
-    geom_point(aes(col = surge), size = 2.5) + geom_line(alpha = 0.5) + 
+truth_epidf <- truth_epidf %>% 
+    group_by(geo_value) %>% epi_slide(~{
+        bef <- .x$surge[1]
+        focal <- .x$surge[2]
+        if (is.na(focal)){
+            out <- NA
+        } else {
+            if (bef == FALSE & focal == TRUE){
+                out <- TRUE
+            } else if (bef == TRUE & focal == FALSE){
+                out <- FALSE
+            } else {
+                out <- FALSE
+            }
+        }
+        return(out)
+}, n = 2 * 7 * 1, align = "right", new_col_name = "upswing")
+
+ggplot(truth_epidf %>% filter(geo_value == "al"), aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge, shape = upswing), size = 2.5) + geom_line(alpha = 0.5) + 
     labs(x = "Weekly data", y = "Incident cases by week")
 ```
 
@@ -119,66 +167,162 @@ Here we use the following procedures for a focal timepoint $T$ and bandwidth $h$
 # this function combines real case counts from time points t-h to t and forecasted 
 # case counts from t+1 to t+h. Growth rate at time t is then estimated using the relative change 
 # method
-mismatch_slide <- function(slide_df, pred, h){
+mismatch_slide <- function(slide_df, pred, h, mod){
     query_dates <- slide_df$time_value
     req_len <- h * 2
     # if not enough weeks for prediction
-    if (length(query_dates) != req_len){
+    if (length(query_dates) != req_len){ 
         return(NA_real_)
     } else {
+        # true dates 
         t_date <- query_dates[1:(req_len - h)]
         ref <- tail(t_date, n = 1)
         p_date <- query_dates[(req_len - h + 1):req_len]
+        # true data 
         t_data <- slide_df %>% filter(time_value %in% t_date) %>% 
             mutate(type = "true")
         # due to weird issues, the ref date + 1 week should be the 1 week ahead forecast
-        f_date <- pred %>% filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>% 
+        f_date <- pred %>% filter(model == mod) %>% 
+            filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>%
             pull(forecast_date) %>% unique()
-        p_data <- pred %>% 
-            filter(forecast_date == f_date) %>%
-            filter(target_end_date %in% p_date) %>% 
-            select(geo_value, target_end_date, value, population, geo_type) %>%
-            dplyr::rename("time_value" = target_end_date) %>%
-            mutate(type = "pred")
-        combine <- bind_rows(t_data, p_data)
-        gr <- combine %>% mutate(gr_pred = growth_rate(y = value, h = h, method = "rel_change") * h) %>% 
-            filter(time_value == ref) %>% pull(gr_pred)
+        
+        if (length(f_date) == 0) {
+            gr <- NA_real_ 
+        } else {
+             p_data <- pred %>% filter(model == mod) %>% 
+                filter(forecast_date == f_date) %>%
+                filter(target_end_date %in% p_date) %>% 
+                select(geo_value, target_end_date, value, population, geo_type) %>%
+                dplyr::rename("time_value" = target_end_date) %>%
+                mutate(type = "pred")
+            combine <- bind_rows(t_data, p_data)
+            gr <- combine %>% 
+                mutate(gr_pred = growth_rate(y = value, h = h, method = "rel_change") * h) %>% 
+                filter(time_value == ref) %>% pull(gr_pred)
+        }
         return(gr)
     }
 }
-combined_df <- truth_epidf %>% epi_slide(~mismatch_slide(slide_df = .x, pred = pred_case, h = h), 
-                                          n = 2 * 7 * h, align = "center", new_col_name = "pred_gr")
-combined_df <- combined_df %>% mutate(surge_pred = case_when(
-    pred_gr >= surge_thresh & value >= min_inc ~ TRUE,
-    is.na(pred_gr) ~ NA,
-    TRUE ~ FALSE
-))
-head(combined_df, n = 20)
 ```
 
-Plotting growth rate when estimated 
+Let's use this with `epi_slide` function and loop through all the models  
 
-```{r}
-gr1 <- ggplot(combined_df, aes(x = time_value, y = gr)) + 
-    geom_line(aes(col = "Est. using real data")) +
-    geom_line(aes(x = time_value, y = pred_gr, 
-                  col = "Est. using real data and forecast")) + 
-    labs(col ="Growth Rate", x = "Week", y = "Growth Rate (adjusted for bandwidth)") +
-    geom_hline(yintercept = 0.5, col = "red")
 
-combined_df %>% filter(month(time_value) %in% c(6,7,8))
+```{r, cache = TRUE}
+forecast_surge_eval <- function(source){
+    combined_df <- truth_epidf %>% group_by(geo_value) %>% 
+        epi_slide(~mismatch_slide(slide_df = .x, pred = pred_case, h = h, mod = source), 
+                  n = 2 * 7 * h, align = "center", new_col_name = "pred_gr")
+    # compute surge 
+    combined_df <- combined_df %>% mutate(surge_pred = case_when(
+        pred_gr >= surge_thresh & value >= min_inc ~ TRUE,
+        is.na(pred_gr) ~ NA,
+        TRUE ~ FALSE
+    ))
+    # compute upswings 
+    combined_df <- combined_df %>% 
+        group_by(geo_value) %>% 
+        epi_slide(~{
+            bef <- .x$surge_pred[1]
+            focal <- .x$surge_pred[2]
+            if (is.na(focal) | is.na(bef)){
+                out <- NA
+            } else {
+                if (bef == FALSE & focal == TRUE){
+                    out <- TRUE
+                } else if (bef == TRUE & focal == FALSE){
+                    out <- FALSE
+                } else {
+                    out <- FALSE
+                }
+            }
+            return(out)
+        }, n = 2 * 7 * 1, align = "right", new_col_name = "upswing_pred")
+    combined_df <- combined_df %>% mutate(model = source)
+    return(combined_df)
+}
+```
 
+```{r, cache=TRUE, message=FALSE}
+eval <- imap(filt_models, ~{
+    print(.y)
+    # slide to do the frankenstein growth rate estimation using prior h week data and 
+    # after h week prediction
+    df <- forecast_surge_eval(source = .x)
+    # Misclassification rate    
+    misclass_surge <- df %>% ungroup(geo_value) %>% 
+        filter(!is.na(surge_pred)) %>% 
+        summarise(misclass = mean(surge != surge_pred), 
+                  class_prop = mean(surge),
+                  sens = sum(surge & surge_pred)/sum(surge), 
+                  spec = sum(!surge & !surge_pred)/sum(!surge))
+
+    pmod <- pROC::roc(surge ~ pred_gr, data = df, subset = !is.na(surge_pred))
+    misclass_surge <- mutate(misclass_surge, auc = round(as.numeric(pmod$auc),3), type = "surge")
+    
+    misclass_upswing<- df %>% ungroup(geo_value) %>% 
+        filter(!is.na(upswing_pred)) %>% 
+        summarise(misclass = mean(upswing != upswing_pred), 
+                  class_prop = mean(upswing),
+                  sens = sum(upswing & upswing_pred)/sum(upswing), 
+                  spec = sum(!upswing & !upswing_pred)/sum(!upswing))
+
+    pmod <- pROC::roc(upswing ~ pred_gr, data = df, subset = !is.na(upswing_pred))
+    misclass_upswing <- mutate(misclass_upswing, auc = round(as.numeric(pmod$auc),3), type = "upswing")
+    results <- bind_rows(misclass_upswing, misclass_surge)
+    return(results)
+})
 ```
 
 
-Plotting incident cases and surge classification
+# Ensemble only evaluation  
+```{r}
+pred_case <- load_forecasts(
+    models = "COVIDhub-ensemble", 
+    dates = d_range, 
+    date_window_size = 6,
+    locations = state.name, 
+    types = "point", 
+    targets = inc_case_targets, 
+    source = "zoltar", 
+    verbose = FALSE, 
+    as_of = curr_date, 
+    hub = c("US")
+) 
+
+df <- forecast_surge_eval(source = .x)
+# Misclassification rate    
+misclass_surge <- df %>% ungroup(geo_value) %>% 
+    filter(!is.na(surge_pred)) %>% 
+    summarise(misclass = mean(surge != surge_pred), 
+              class_prop = mean(surge),
+              sens = sum(surge & surge_pred)/sum(surge), 
+              spec = sum(!surge & !surge_pred)/sum(!surge))
+
+pmod <- pROC::roc(surge ~ pred_gr, data = df, subset = !is.na(surge_pred))
+misclass_surge <- mutate(misclass_surge, auc = round(as.numeric(pmod$auc),3), type = "surge")
+
+misclass_upswing<- df %>% ungroup(geo_value) %>% 
+    filter(!is.na(upswing_pred)) %>% 
+    summarise(misclass = mean(upswing != upswing_pred), 
+              class_prop = mean(upswing),
+              sens = sum(upswing & upswing_pred)/sum(upswing), 
+              spec = sum(!upswing & !upswing_pred)/sum(!upswing))
+
+pmod <- pROC::roc(upswing ~ pred_gr, data = df, subset = !is.na(upswing_pred))
+misclass_upswing <- mutate(misclass_upswing, auc = round(as.numeric(pmod$auc),3), type = "upswing")
+results <- bind_rows(misclass_upswing, misclass_surge)
+print(results)
+```
+
+Plotting incident cases and surge classification   
 
 ```{r}
-p1 <- ggplot(combined_df, aes(x = time_value, y = value)) +
+p1 <- ggplot(df, aes(x = time_value, y = value)) +
     geom_point(aes(col = surge)) + 
     geom_line(alpha = 0.5) + 
     labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
-p2 <- ggplot(combined_df, aes(x = time_value, y = value)) + 
+p2 <- ggplot(df, aes(x = time_value, y = value)) + 
     geom_point(aes(col = surge_pred)) + 
     geom_line(alpha = 0.5) + 
     labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
@@ -187,14 +331,19 @@ p1 /p2
 
 ```
 
-# Misclassification rate    
 
 ```{r}
-combined_df %>% filter(!is.na(surge_pred)) %>% 
-    summarise(misclass_ensemble = mean(surge != surge_pred), 
-              misclass_never = mean(surge),
-              sens = sum(surge & surge_pred)/sum(surge), 
-              spec = sum(!surge & !surge_pred)/sum(!surge))
-pROC::roc(surge ~ pred_gr, data = combined_df, subset = !is.na(surge_pred))
+p1 <- ggplot(df, aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
+p2 <- ggplot(df, aes(x = time_value, y = value)) + 
+    geom_point(aes(col = surge_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
+
+p1 /p2
+
 ```
+
 

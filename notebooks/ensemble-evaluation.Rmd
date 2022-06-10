@@ -46,7 +46,7 @@ wk_ahead <- 1
 inc_case_targets <- paste(1:h, "wk ahead inc case")
 surge_thresh <- 0.5
 min_inc <- 20
-state <- "California"
+state <- "Massachusetts"
 ```
 
 # Loading forecasts and underlying data
@@ -146,8 +146,10 @@ mismatch_slide <- function(slide_df, pred, h){
         t_data <- slide_df %>% filter(time_value %in% t_date) %>% 
             mutate(type = "true")
         # due to weird issues, the ref date + 1 week should be the 1 week ahead forecast
-        f_date <- pred %>% filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>% 
+        f_date <- pred %>% 
+            filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>% 
             pull(forecast_date) %>% unique()
+        
         p_data <- pred %>% 
             filter(forecast_date == f_date) %>%
             filter(target_end_date %in% p_date) %>% 
