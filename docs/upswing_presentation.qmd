@@ -5,7 +5,10 @@ date: 2022-06-30
 format: 
     revealjs:
         theme: simple
-        chalkboard: false 
+        chalkboard: false
+        smaller: true
+        scrollable: true
+        pdf-separate-fragments: false
 editor: visual
 ---
 
@@ -22,6 +25,7 @@ library(rlang)
 library(patchwork)
 library(pROC)
 library(glue)
+library(gt)
 theme_set(theme_bw())
 
 d_range <- seq(ymd("2020-11-01"), ymd("2022-06-01"), by = 7)
@@ -100,13 +104,86 @@ pred_gr_classif <- pred_gr %>%
         }
         return(out)
     }, n = 2 * 7 * 1, align = "right", new_col_name = "upswing_pred")
+
+pred_gr_classif <- pred_gr_classif %>% 
+    mutate(upswing_pred = if_else(model == "COVIDhub-ensemble", 
+                                  FALSE, upswing_pred)) %>% 
+    mutate(surge_pred = if_else(model == "COVIDhub-ensemble", 
+                                FALSE, surge_pred)) %>% 
+    mutate(model = recode(model, 
+                          `COVIDhub-ensemble` = "Never-Baseline"))
+
+models <- c("COVIDhub-baseline", "RobertWalraven-ESG", 
+            "CovidAnalytics-DELPHI", "USC-SI_kJalpha", 
+            "COVIDhub-4_week_ensemble", "CU-nochange", 
+            "Karlen-pypm", "CU-scenario_low", 
+            "Never-Baseline")
+eval_surge <- map_dfr(models, ~{
+    misclass_surge <- pred_gr_classif %>% ungroup() %>% 
+        filter(model == .x) %>% 
+        filter(!is.na(surge_pred)) %>% 
+        summarise(misclass = mean(surge != surge_pred), 
+                  sens = sum(surge & surge_pred)/sum(surge), 
+                  spec = sum(!surge & !surge_pred)/sum(!surge))
+    if (.x == "Never-Baseline"){
+        misclass_surge <- mutate(misclass_surge, auc = NA_real_, 
+                                 type = "surge")
+        
+    } else {
+        pmod <- pROC::roc(surge ~ pred_gr, 
+                      data = pred_gr_classif %>% filter(model == .x), 
+                      subset = !is.na(surge_pred))
+        misclass_surge <- mutate(misclass_surge, 
+                                 auc = round(as.numeric(pmod$auc),3), 
+                                 type = "surge")
+    }
+    misclass_surge <- misclass_surge %>% mutate(model = .x)
+    return(misclass_surge)
+})
+
+eval_upswing <- map_dfr(models, ~{
+    misclass_upswing <- pred_gr_classif %>% ungroup() %>% 
+        filter(model == .x) %>% 
+        filter(!is.na(upswing_pred)) %>% 
+        summarise(misclass = mean(upswing != upswing_pred, na.rm = TRUE),
+                  upswing_prev = mean(upswing, na.rm = TRUE),
+                  sens = sum(upswing & upswing_pred, 
+                             na.rm = TRUE)/sum(upswing, 
+                                               na.rm = TRUE), 
+                  spec = sum(!upswing & !upswing_pred, 
+                             na.rm = TRUE)/sum(!upswing, na.rm = TRUE))
+    if (.x == "Never-Baseline"){
+        misclass_upswing <- mutate(misclass_upswing, 
+                           auc = NA_real_,
+                           type = "upswing")
+    } else {
+        pmod <- pROC::roc(upswing ~ pred_gr, 
+                      data = pred_gr_classif %>% filter(model == .x), 
+                      subset = !is.na(upswing_pred))
+        misclass_upswing <- mutate(misclass_upswing, 
+                                   auc = round(as.numeric(pmod$auc),3),
+                                   type = "upswing")
+    }
+    misclass_upswing <- misclass_upswing %>% mutate(model = .x)
+    return(misclass_upswing)
+})
 ```
 
 ## Motivation
 
-Insert quote [^1]
+> When optimized across the entire pandemic, without a special focus on the 'peaks', models will naturally be trained to predict well during non-peak times, as the vast majority of predicted time points are at non-peak moments [^1]
 
 [^1]: Challenges in training ensembles to forecast COVID-19 cases and deaths in the United States. [*forecasters.org*](https://forecasters.org/blog/2021/04/09/challenges-in-training-ensembles-to-forecast-covid-19-cases-and-deaths-in-the-united-states/)
+
+Forecasters are not optimized to predict the onset of a peak.
+
+::: {.fragment .fade-in}
+-   Update evaluation with more data since October, 2021.
+
+-   Evaluating predicting surges and upswings in cases.
+
+-   Leveraging `epiprocess` R package.
+:::
 
 ## Defining surges and upswings {.smaller}
 
@@ -162,10 +239,10 @@ ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>%
     theme(legend.position = "None") +
     ylim(0,150000) +
     labs(x = "Time (in weeks)", y = "Incident cases", 
-         title = "Incident cases in MA from 2021-11-01 to 2022-06-01")
+         title = "Incident cases in MA from 2021-10-31 to 2022-06-18")
 ```
 
-Cases are **surging** if the last 4-weeks have been at least 50% worse than the 4 weeks before that where the incidence number of cases is at least 20 more more.
+Cases are **surging** if the last 4-weeks have been at least 50% worse than the 4 weeks before that where the incidence number of cases is at least 20 or more.
 
 An **upswing** is the week defining beginning of a surge period.
 
@@ -173,7 +250,6 @@ An **upswing** is the week defining beginning of a surge period.
 
 New definition of **surge**
 
-::: .fragment
 ```{r, echo=FALSE}
 f_col <- c("p1" = "#9F2B68", "yes" = "#FFD700", "p2" = "#800020")
 focal <- "2021-01-02"
@@ -224,13 +300,22 @@ ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>%
     theme(legend.position = "None") +
     ylim(0,150000) +
     labs(x = "Time (in weeks)", y = "Incident cases", 
-         title = "Incident cases in MA from 2021-11-01 to 2022-06-01")
+         title = "Incident cases in MA from 2021-10-31 to 2022-06-18")
 ```
+
+::: r-stack
+::: {.fragment .fade-in-then-out}
+Cases are **surging** if the last 4 weeks have been at least 50% worse than the 4 weeks ahead where the incidence number of cases is at least 20 or more.
+
+An **upswing** is the week defining beginning of a surge period.
 :::
 
 ::: {.fragment .fade-in-then-out}
 A 4-week ahead forecaster is a **nowcaster** for whether a week is currently in a surge. This can be computed easily from `epiprocess::growth_rate` using the `rel_change` method.
 :::
+:::
+
+## Aside: Using `growth_rate` function from `epiprocess` {.smaller}
 
 ::: {.fragment .fade-in-then-out}
 The equation for `rel_change` approach is $\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right)$ for a focal time $T$, with case counts $Y_{T}$ and bandwidth $h$ (in this case $h = 4$ representing a 4-week period used to define surges). We can manipulate this equation to be:
@@ -239,25 +324,236 @@ $$
 \frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right)
 $$
 
-Since the $h$-epiweek-incidence relative change is equal to
+Since the $h$-week-incidence relative change is defined as:
 
 $$
 \frac{\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{\sum_{t = T+1-h}^{T} Y_t}
 $$
 
-We can calculate the difference by multiplying the `growth_rate` estimate with the bandwidth $h$
+We can calculate the difference by multiplying the `growth_rate` estimate with the bandwidth $h$.
 :::
 
-## Calculating surges from real data  {.smaller}
+## Calculating surges and upswings from real data {.smaller}
 
 ```{r}
-
+#| fig-align: center
+#| warning: false
+size_shape <- c("TRUE" = 5, "FALSE" = 1.5)
+ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma"), 
+       aes(x = time_value, y = value)) + 
+    geom_point(aes(col = surge, size = upswing)) + 
+    geom_line(alpha = 0.2) + 
+    scale_size_manual(values = size_shape) +
+    labs(y = "Incident cases", x = "Time (in weeks)", 
+         title = "Incident cases in MA from 2021-11-01 to 2022-06-18", 
+         col = "Surge", size = "Upswing")
 ```
 
-## Evaluating forecasters  {.smaller}
+## Evaluating forecasters {.smaller}
 
-## Predicting surges  {.smaller}
+::: r-stack
+::: {.fragment .fade-in-then-out}
+-   How good are the forecasters at predicting upswings AND surges?
 
-## Predicting upswings  {.smaller}
+-   Comparing and contrasting between the different forecasters themselves.
 
-## Conclusions  {.smaller}
+    ```{r}
+    #| echo: false
+    #| fig-align: center
+    ggplot(forecast %>% filter(horizon == 4, model != "COVIDhub-ensemble"), aes(x = model, y = target_end_date)) + 
+        geom_point() + 
+        labs(x = "Models", y = "4-week ahead target end date") +
+        coord_flip()
+    ```
+:::
+
+::: {.fragment .fade-in-then-out}
+Take truth and forecast data from `covidHubUtils` with $h = 4$ as the bandwidth of interest (i.e. 4-week-ahead forecasters). Evaluating period is between 2020-10-31 and 2022-06-18
+
+![](images/paste-D1FE78E3.png){fig-align="center" width="524"}
+:::
+
+::: {.fragment .fade-in-then-out}
+This was done using `epiprocess::epi_slide`. Values are returned as `NA` if:
+
+-   There are not enough dates, e.g. the sliding period contains 7 days instead of 8 days (at the beginning and end of the evaluation time period).
+
+-   Requiring that forecasters need to have the complete $h$-week ahead forecast, and that the first horizon has to start at $T+1$
+
+**Example**: If the time $T+1$ is 2021-01-02, we obtain forecasts from a **forecast date** where 2021-01-02 is the first horizon. Additionally, the total number of horizons for that forecast date has to be $h$.
+:::
+:::
+
+## Nowcasting surges  {.smaller}
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| fig-align: center
+p1 <- ggplot(eval_surge, aes(x = reorder(model, -misclass), 
+                       y = misclass)) + ylim(0,0.5) + 
+    geom_point(size = 3) + 
+    labs(x = "Models", y = "Misclassification Error") + 
+    coord_flip()
+
+library(pals)
+col_sc <- pals::glasbey(n = 9)
+names(col_sc) <- models
+
+suppressMessages(mods <- map(models, ~{
+    pROC::roc(surge ~ pred_gr, data = pred_gr_classif %>% 
+                  filter(model == .x), 
+                  subset = !is.na(surge_pred), verbose = FALSE)
+}))
+names(mods) <- models
+
+auc_df <- imap_dfr(mods, ~{
+    tb <- tibble(
+        sensitivity = .x$sensitivities,
+        specificity = .x$specificities,
+        Models = .y
+    )
+    return(tb)
+})
+
+auc_df <- auc_df %>% mutate(Models = as.factor(Models)) %>% 
+    filter(Models != "Never-Baseline")
+p2 <- ggplot(auc_df, aes(x = 1 - specificity, 
+                   y = sensitivity, col = Models)) + 
+    geom_abline() + 
+    geom_line(aes(col = Models)) + 
+    scale_color_manual(values = col_sc) + 
+    labs(x = "1 - Specificity", y = "Sensitivity")
+p1
+p2
+#names(mods) <- models
+#plot(mods[[1]], col = colors[1], legacy.axes = TRUE, main = "ROC #curves for surge prediction")
+#for (i in 2:length(mods)){
+#    plot(mods[[i]], add = TRUE, col = colors[i])
+#}
+
+#legend(0.4,0.5,legend=models, col = colors, lty = 1, cex = 0.8)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+eval_surge %>% select(-type) %>% 
+    select(model, misclass, sens, spec, auc) %>% 
+    rename("Misclassification Rate" = "misclass", 
+           "Sensitivity" = "sens", 
+           "Specificity" = "spec", 
+           "AUROC" = "auc", 
+           "Models" = "model") %>% 
+    gt() %>% 
+    tab_header(title = 
+                   md("**Surge classification performance**")) %>%
+    fmt_number(columns = c("Misclassification Rate", 
+                           "Sensitivity", "Specificity", "AUROC"))
+```
+:::
+:::
+
+::: aside
+The `Never-Baseline` model predicts all periods as `FALSE` (no surges or upswings)
+:::
+
+## Nowcasting upswings {.smaller}
+
+::: columns
+::: {.column width="50%"}
+```{r}
+#| fig-align: center
+p1 <- ggplot(eval_upswing, aes(x = reorder(model, -misclass), 
+                       y = misclass)) + ylim(0,0.5) + 
+    geom_point(size = 3) + 
+    labs(x = "Models", y = "Misclassification Error") + 
+    coord_flip()
+
+library(pals)
+col_sc <- pals::glasbey(n = 9)
+names(col_sc) <- models
+
+suppressMessages(mods <- map(models, ~{
+    pROC::roc(upswing ~ pred_gr, data = pred_gr_classif %>% 
+                  filter(model == .x), 
+                  subset = !is.na(upswing_pred), verbose = FALSE)
+}))
+names(mods) <- models
+
+auc_df <- imap_dfr(mods, ~{
+    tb <- tibble(
+        sensitivity = .x$sensitivities,
+        specificity = .x$specificities,
+        Models = .y
+    )
+    return(tb)
+})
+
+auc_df <- auc_df %>% mutate(Models = as.factor(Models)) %>% 
+    filter(Models != "Never-Baseline")
+p2 <- ggplot(auc_df, aes(x = 1 - specificity, 
+                   y = sensitivity, col = Models)) + 
+    geom_abline() + 
+    geom_line(aes(col = Models)) + 
+    scale_color_manual(values = col_sc) + 
+    labs(x = "1 - Specificity", y = "Sensitivity")
+p1
+p2
+#names(mods) <- models
+#plot(mods[[1]], col = colors[1], legacy.axes = TRUE, main = "ROC #curves for surge prediction")
+#for (i in 2:length(mods)){
+#    plot(mods[[i]], add = TRUE, col = colors[i])
+#}
+
+#legend(0.4,0.5,legend=models, col = colors, lty = 1, cex = 0.8)
+```
+:::
+
+::: {.column width="50%"}
+```{r}
+eval_upswing %>% select(-type) %>% 
+    select(model, misclass, sens, spec, auc) %>% 
+    rename("Misclassification Rate" = "misclass", 
+           "Sensitivity" = "sens", 
+           "Specificity" = "spec", 
+           "AUROC" = "auc", 
+           "Models" = "model") %>% 
+    gt() %>% 
+    tab_header(title = 
+                   md("**Upswing classification performance**")) %>%
+    fmt_number(columns = c("Misclassification Rate", 
+                           "Sensitivity", "Specificity", "AUROC"))
+```
+:::
+:::
+
+::: aside
+The `Never-Baseline` model predicts all periods as `FALSE` (no surges or upswings)
+:::
+
+## Conclusions {.smaller}
+
+::: incremental
+-   Most forecasters are good at detecting surges overall but not good at detecting when a surge is an upswing.
+
+-   Misclassification rate is lower for predicting upswings is because the number of upswings are rare (0.04% of total weeks evaluated - \~200 events in total out of 5000 across all jurisdictions).
+:::
+
+::: r-stack
+::: {.fragment .fade-in-then-out}
+Future directions:
+
+-   Phase categories
+:::
+
+![](images/Screen%20Shot%202022-03-21%20at%2012.13.11%20PM.png){.fragment .fade-in-then-out fig-align="left" width="347"}
+
+::: {.fragment .fade-in style="text-align: left"}
+Future directions:
+
+-   Phase categories
+
+-   Downswing analysis
+:::
+:::

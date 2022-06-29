@@ -238,6 +238,7 @@
     }
     .reveal .slide:not(.center) {
       height: 100%;
+      overflow-y: auto;
     }
     .reveal .slide.scrollable {
       overflow-y: auto;
@@ -327,57 +328,1143 @@
 
 <section id="motivation" class="slide level2">
 <h2>Motivation</h2>
-<p>Insert quote <sup>1</sup></p>
+<blockquote>
+<p>When optimized across the entire pandemic, without a special focus on the ‘peaks’, models will naturally be trained to predict well during non-peak times, as the vast majority of predicted time points are at non-peak moments <sup>1</sup></p>
+</blockquote>
+<p>Forecasters are not optimized to predict the onset of a peak.</p>
+<div class="fragment fade-in">
+<ul>
+<li><p>Update evaluation with more data since October, 2021.</p></li>
+<li><p>Evaluating predicting surges and upswings in cases.</p></li>
+<li><p>Leveraging <code>epiprocess</code> R package.</p></li>
+</ul>
+</div>
 <aside><ol class="aside-footnotes"><li id="fn1" role="doc-endnote"><p>Challenges in training ensembles to forecast COVID-19 cases and deaths in the United States. <a href="https://forecasters.org/blog/2021/04/09/challenges-in-training-ensembles-to-forecast-covid-19-cases-and-deaths-in-the-united-states/"><em>forecasters.org</em></a></p></li></ol></aside></section>
 <section id="defining-surges-and-upswings" class="slide level2 smaller">
 <h2>Defining surges and upswings</h2>
 <p>Previous definition of <strong>surge</strong></p>
 
-<img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-1-1.png" width="960" class="r-stretch"><p>Cases are <strong>surging</strong> if the last 4-weeks have been at least 50% worse than the 4 weeks before that where the incidence number of cases is at least 20 more more.</p>
+<img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-1-1.png" width="960" class="r-stretch"><p>Cases are <strong>surging</strong> if the last 4-weeks have been at least 50% worse than the 4 weeks before that where the incidence number of cases is at least 20 or more.</p>
 <p>An <strong>upswing</strong> is the week defining beginning of a surge period.</p>
 </section>
 <section id="defining-surges-and-upswings-1" class="slide level2 smaller">
 <h2>Defining surges and upswings</h2>
 <p>New definition of <strong>surge</strong></p>
-<div class=".fragment">
-<div class="cell">
-<div class="cell-output-display">
-<p><img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-2-1.png" width="960"></p>
-</div>
-</div>
+
+<img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-2-1.png" width="960" class="r-stretch"><div class="r-stack">
+<div class="fragment fade-in-then-out">
+<p>Cases are <strong>surging</strong> if the last 4 weeks have been at least 50% worse than the 4 weeks ahead where the incidence number of cases is at least 20 or more.</p>
+<p>An <strong>upswing</strong> is the week defining beginning of a surge period.</p>
 </div>
 <div class="fragment fade-in-then-out">
 <p>A 4-week ahead forecaster is a <strong>nowcaster</strong> for whether a week is currently in a surge. This can be computed easily from <code>epiprocess::growth_rate</code> using the <code>rel_change</code> method.</p>
 </div>
+</div>
+</section>
+<section id="aside-using-growth_rate-function-from-epiprocess" class="slide level2 smaller">
+<h2>Aside: Using <code>growth_rate</code> function from <code>epiprocess</code></h2>
 <div class="fragment fade-in-then-out">
 <p>The equation for <code>rel_change</code> approach is <span class="math inline">\(\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right)\)</span> for a focal time <span class="math inline">\(T\)</span>, with case counts <span class="math inline">\(Y_{T}\)</span> and bandwidth <span class="math inline">\(h\)</span> (in this case <span class="math inline">\(h = 4\)</span> representing a 4-week period used to define surges). We can manipulate this equation to be:</p>
 <p><span class="math display">\[
 \frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right)
 \]</span></p>
-<p>Since the <span class="math inline">\(h\)</span>-epiweek-incidence relative change is equal to</p>
+<p>Since the <span class="math inline">\(h\)</span>-week-incidence relative change is defined as:</p>
 <p><span class="math display">\[
 \frac{\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{\sum_{t = T+1-h}^{T} Y_t}
 \]</span></p>
-<p>We can calculate the difference by multiplying the <code>growth_rate</code> estimate with the bandwidth <span class="math inline">\(h\)</span></p>
+<p>We can calculate the difference by multiplying the <code>growth_rate</code> estimate with the bandwidth <span class="math inline">\(h\)</span>.</p>
 </div>
 </section>
-<section id="calculating-surges-from-real-data" class="slide level2 smaller">
-<h2>Calculating surges from real data</h2>
-<div class="cell">
+<section id="calculating-surges-and-upswings-from-real-data" class="slide level2 smaller">
+<h2>Calculating surges and upswings from real data</h2>
 
-</div>
-</section>
+<img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-3-1.png" width="960" class="r-stretch quarto-figure-center"></section>
 <section id="evaluating-forecasters" class="slide level2 smaller">
 <h2>Evaluating forecasters</h2>
+<div class="r-stack">
+<div class="fragment fade-in-then-out">
+<ul>
+<li><p>How good are the forecasters at predicting upswings AND surges?</p></li>
+<li><p>Comparing and contrasting between the different forecasters themselves.</p>
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-4-1.png" width="960"></p>
+</figure>
+</div>
+</div>
+</div></li>
+</ul>
+</div>
+<div class="fragment fade-in-then-out">
+<p>Take truth and forecast data from <code>covidHubUtils</code> with <span class="math inline">\(h = 4\)</span> as the bandwidth of interest (i.e.&nbsp;4-week-ahead forecasters). Evaluating period is between 2020-10-31 and 2022-06-18</p>
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="images/paste-D1FE78E3.png" width="524"></p>
+</figure>
+</div>
+</div>
+<div class="fragment fade-in-then-out">
+<p>This was done using <code>epiprocess::epi_slide</code>. Values are returned as <code>NA</code> if:</p>
+<ul>
+<li><p>There are not enough dates, e.g.&nbsp;the sliding period contains 7 days instead of 8 days (at the beginning and end of the evaluation time period).</p></li>
+<li><p>Requiring that forecasters need to have the complete <span class="math inline">\(h\)</span>-week ahead forecast, and that the first horizon has to start at <span class="math inline">\(T+1\)</span></p></li>
+</ul>
+<p><strong>Example</strong>: If the time <span class="math inline">\(T+1\)</span> is 2021-01-02, we obtain forecasts from a <strong>forecast date</strong> where 2021-01-02 is the first horizon. Additionally, the total number of horizons for that forecast date has to be <span class="math inline">\(h\)</span>.</p>
+</div>
+</div>
 </section>
-<section id="predicting-surges" class="slide level2 smaller">
-<h2>Predicting surges</h2>
-</section>
-<section id="predicting-upswings" class="slide level2 smaller">
-<h2>Predicting upswings</h2>
-</section>
+<section id="nowcasting-surges" class="slide level2 smaller">
+<h2>Nowcasting surges</h2>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-5-1.png" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-5-2.png" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="gvjcpostou" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
+}
+
+#gvjcpostou .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#gvjcpostou .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#gvjcpostou .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#gvjcpostou .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#gvjcpostou .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#gvjcpostou .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#gvjcpostou .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#gvjcpostou .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#gvjcpostou .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#gvjcpostou .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#gvjcpostou .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#gvjcpostou .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#gvjcpostou .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#gvjcpostou .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#gvjcpostou .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#gvjcpostou .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#gvjcpostou .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#gvjcpostou .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#gvjcpostou .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#gvjcpostou .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#gvjcpostou .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#gvjcpostou .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#gvjcpostou .gt_left {
+  text-align: left;
+}
+
+#gvjcpostou .gt_center {
+  text-align: center;
+}
+
+#gvjcpostou .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#gvjcpostou .gt_font_normal {
+  font-weight: normal;
+}
+
+#gvjcpostou .gt_font_bold {
+  font-weight: bold;
+}
+
+#gvjcpostou .gt_font_italic {
+  font-style: italic;
+}
+
+#gvjcpostou .gt_super {
+  font-size: 65%;
+}
+
+#gvjcpostou .gt_two_val_uncert {
+  display: inline-block;
+  line-height: 1em;
+  text-align: right;
+  font-size: 60%;
+  vertical-align: -0.25em;
+  margin-left: 0.1em;
+}
+
+#gvjcpostou .gt_footnote_marks {
+  font-style: italic;
+  font-weight: normal;
+  font-size: 75%;
+  vertical-align: 0.4em;
+}
+
+#gvjcpostou .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#gvjcpostou .gt_slash_mark {
+  font-size: 0.7em;
+  line-height: 0.7em;
+  vertical-align: 0.15em;
+}
+
+#gvjcpostou .gt_fraction_numerator {
+  font-size: 0.6em;
+  line-height: 0.6em;
+  vertical-align: 0.45em;
+}
+
+#gvjcpostou .gt_fraction_denominator {
+  font-size: 0.6em;
+  line-height: 0.6em;
+  vertical-align: -0.05em;
+}
+</style>
+<table class="gt_table">
+  <thead class="gt_header">
+    <tr>
+      <th colspan="5" class="gt_heading gt_title gt_font_normal gt_bottom_border" style=""><strong>Surge classification performance</strong></th>
+    </tr>
+    
+  </thead>
+  <thead class="gt_col_headings">
+    <tr>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1">Models</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">Misclassification Rate</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">Sensitivity</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">Specificity</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">AUROC</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td class="gt_row gt_left">COVIDhub-baseline</td>
+<td class="gt_row gt_right">0.23</td>
+<td class="gt_row gt_right">0.31</td>
+<td class="gt_row gt_right">0.97</td>
+<td class="gt_row gt_right">0.85</td></tr>
+    <tr><td class="gt_row gt_left">RobertWalraven-ESG</td>
+<td class="gt_row gt_right">0.24</td>
+<td class="gt_row gt_right">0.28</td>
+<td class="gt_row gt_right">0.96</td>
+<td class="gt_row gt_right">0.80</td></tr>
+    <tr><td class="gt_row gt_left">CovidAnalytics-DELPHI</td>
+<td class="gt_row gt_right">0.26</td>
+<td class="gt_row gt_right">0.21</td>
+<td class="gt_row gt_right">0.95</td>
+<td class="gt_row gt_right">0.54</td></tr>
+    <tr><td class="gt_row gt_left">USC-SI_kJalpha</td>
+<td class="gt_row gt_right">0.18</td>
+<td class="gt_row gt_right">0.58</td>
+<td class="gt_row gt_right">0.92</td>
+<td class="gt_row gt_right">0.85</td></tr>
+    <tr><td class="gt_row gt_left">COVIDhub-4_week_ensemble</td>
+<td class="gt_row gt_right">0.20</td>
+<td class="gt_row gt_right">0.42</td>
+<td class="gt_row gt_right">0.97</td>
+<td class="gt_row gt_right">0.87</td></tr>
+    <tr><td class="gt_row gt_left">CU-nochange</td>
+<td class="gt_row gt_right">0.18</td>
+<td class="gt_row gt_right">0.53</td>
+<td class="gt_row gt_right">0.94</td>
+<td class="gt_row gt_right">0.84</td></tr>
+    <tr><td class="gt_row gt_left">Karlen-pypm</td>
+<td class="gt_row gt_right">0.15</td>
+<td class="gt_row gt_right">0.71</td>
+<td class="gt_row gt_right">0.89</td>
+<td class="gt_row gt_right">0.88</td></tr>
+    <tr><td class="gt_row gt_left">CU-scenario_low</td>
+<td class="gt_row gt_right">0.20</td>
+<td class="gt_row gt_right">0.47</td>
+<td class="gt_row gt_right">0.95</td>
+<td class="gt_row gt_right">0.84</td></tr>
+    <tr><td class="gt_row gt_left">Never-Baseline</td>
+<td class="gt_row gt_right">0.31</td>
+<td class="gt_row gt_right">0.00</td>
+<td class="gt_row gt_right">1.00</td>
+<td class="gt_row gt_right">NA</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<aside><div>
+<p>The <code>Never-Baseline</code> model predicts all periods as <code>FALSE</code> (no surges or upswings)</p>
+</div></aside></section>
+<section id="nowcasting-upswings" class="slide level2 smaller">
+<h2>Nowcasting upswings</h2>
+<div class="columns">
+<div class="column" style="width:50%;">
+<div class="cell" data-layout-align="center">
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-7-1.png" width="960"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure>
+<p><img data-src="upswing_presentation_files/figure-revealjs/unnamed-chunk-7-2.png" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+</div><div class="column" style="width:50%;">
+<div class="cell">
+<div class="cell-output-display">
+
+<div id="zkcwyaopey" style="overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', 'Fira Sans', 'Droid Sans', Arial, sans-serif;
+}
+
+#zkcwyaopey .gt_table {
+  display: table;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#zkcwyaopey .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 0;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#zkcwyaopey .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#zkcwyaopey .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#zkcwyaopey .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#zkcwyaopey .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#zkcwyaopey .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#zkcwyaopey .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#zkcwyaopey .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#zkcwyaopey .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#zkcwyaopey .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#zkcwyaopey .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#zkcwyaopey .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zkcwyaopey .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#zkcwyaopey .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#zkcwyaopey .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zkcwyaopey .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#zkcwyaopey .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zkcwyaopey .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#zkcwyaopey .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-left: 4px;
+  padding-right: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zkcwyaopey .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#zkcwyaopey .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#zkcwyaopey .gt_left {
+  text-align: left;
+}
+
+#zkcwyaopey .gt_center {
+  text-align: center;
+}
+
+#zkcwyaopey .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#zkcwyaopey .gt_font_normal {
+  font-weight: normal;
+}
+
+#zkcwyaopey .gt_font_bold {
+  font-weight: bold;
+}
+
+#zkcwyaopey .gt_font_italic {
+  font-style: italic;
+}
+
+#zkcwyaopey .gt_super {
+  font-size: 65%;
+}
+
+#zkcwyaopey .gt_two_val_uncert {
+  display: inline-block;
+  line-height: 1em;
+  text-align: right;
+  font-size: 60%;
+  vertical-align: -0.25em;
+  margin-left: 0.1em;
+}
+
+#zkcwyaopey .gt_footnote_marks {
+  font-style: italic;
+  font-weight: normal;
+  font-size: 75%;
+  vertical-align: 0.4em;
+}
+
+#zkcwyaopey .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#zkcwyaopey .gt_slash_mark {
+  font-size: 0.7em;
+  line-height: 0.7em;
+  vertical-align: 0.15em;
+}
+
+#zkcwyaopey .gt_fraction_numerator {
+  font-size: 0.6em;
+  line-height: 0.6em;
+  vertical-align: 0.45em;
+}
+
+#zkcwyaopey .gt_fraction_denominator {
+  font-size: 0.6em;
+  line-height: 0.6em;
+  vertical-align: -0.05em;
+}
+</style>
+<table class="gt_table">
+  <thead class="gt_header">
+    <tr>
+      <th colspan="5" class="gt_heading gt_title gt_font_normal gt_bottom_border" style=""><strong>Upswing classification performance</strong></th>
+    </tr>
+    
+  </thead>
+  <thead class="gt_col_headings">
+    <tr>
+      <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1">Models</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">Misclassification Rate</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">Sensitivity</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">Specificity</th>
+      <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1">AUROC</th>
+    </tr>
+  </thead>
+  <tbody class="gt_table_body">
+    <tr><td class="gt_row gt_left">COVIDhub-baseline</td>
+<td class="gt_row gt_right">0.09</td>
+<td class="gt_row gt_right">0.06</td>
+<td class="gt_row gt_right">0.96</td>
+<td class="gt_row gt_right">0.52</td></tr>
+    <tr><td class="gt_row gt_left">RobertWalraven-ESG</td>
+<td class="gt_row gt_right">0.08</td>
+<td class="gt_row gt_right">0.01</td>
+<td class="gt_row gt_right">0.96</td>
+<td class="gt_row gt_right">0.57</td></tr>
+    <tr><td class="gt_row gt_left">CovidAnalytics-DELPHI</td>
+<td class="gt_row gt_right">0.08</td>
+<td class="gt_row gt_right">0.01</td>
+<td class="gt_row gt_right">0.97</td>
+<td class="gt_row gt_right">0.64</td></tr>
+    <tr><td class="gt_row gt_left">USC-SI_kJalpha</td>
+<td class="gt_row gt_right">0.11</td>
+<td class="gt_row gt_right">0.20</td>
+<td class="gt_row gt_right">0.93</td>
+<td class="gt_row gt_right">0.56</td></tr>
+    <tr><td class="gt_row gt_left">COVIDhub-4_week_ensemble</td>
+<td class="gt_row gt_right">0.09</td>
+<td class="gt_row gt_right">0.05</td>
+<td class="gt_row gt_right">0.95</td>
+<td class="gt_row gt_right">0.50</td></tr>
+    <tr><td class="gt_row gt_left">CU-nochange</td>
+<td class="gt_row gt_right">0.11</td>
+<td class="gt_row gt_right">0.15</td>
+<td class="gt_row gt_right">0.93</td>
+<td class="gt_row gt_right">0.54</td></tr>
+    <tr><td class="gt_row gt_left">Karlen-pypm</td>
+<td class="gt_row gt_right">0.08</td>
+<td class="gt_row gt_right">0.12</td>
+<td class="gt_row gt_right">0.95</td>
+<td class="gt_row gt_right">0.50</td></tr>
+    <tr><td class="gt_row gt_left">CU-scenario_low</td>
+<td class="gt_row gt_right">0.10</td>
+<td class="gt_row gt_right">0.07</td>
+<td class="gt_row gt_right">0.93</td>
+<td class="gt_row gt_right">0.50</td></tr>
+    <tr><td class="gt_row gt_left">Never-Baseline</td>
+<td class="gt_row gt_right">0.05</td>
+<td class="gt_row gt_right">0.00</td>
+<td class="gt_row gt_right">1.00</td>
+<td class="gt_row gt_right">NA</td></tr>
+  </tbody>
+  
+  
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<aside><div>
+<p>The <code>Never-Baseline</code> model predicts all periods as <code>FALSE</code> (no surges or upswings)</p>
+</div></aside></section>
 <section id="conclusions" class="slide level2 smaller">
 <h2>Conclusions</h2>
+<div>
+<ul>
+<li class="fragment"><p>Most forecasters are good at detecting surges overall but not good at detecting when a surge is an upswing.</p></li>
+<li class="fragment"><p>Misclassification rate is lower for predicting upswings is because the number of upswings are rare (0.04% of total weeks evaluated - ~200 events in total out of 5000 across all jurisdictions).</p></li>
+</ul>
+</div>
+<div class="r-stack">
+<div class="fragment fade-in-then-out">
+<p>Future directions:</p>
+<ul>
+<li>Phase categories</li>
+</ul>
+</div>
+<div class="quarto-figure quarto-figure-left">
+<figure>
+<p><img data-src="images/Screen%20Shot%202022-03-21%20at%2012.13.11%20PM.png" class="fragment fade-in-then-out" width="347"></p>
+</figure>
+</div>
+<div class="fragment fade-in" style="text-align: left">
+<p>Future directions:</p>
+<ul>
+<li><p>Phase categories</p></li>
+<li><p>Downswing analysis</p></li>
+</ul>
+</div>
+</div>
 <div class="footer footer-default">
 
 </div>
@@ -409,13 +1496,13 @@
       Reveal.initialize({
 'controlsAuto': true,
 'previewLinksAuto': false,
-'smaller': false,
+'smaller': true,
 'pdfSeparateFragments': false,
 'autoAnimateEasing': "ease",
 'autoAnimateDuration': 1,
 'autoAnimateUnmatched': true,
 'menu': {"side":"left","useTextContentForMissingTitles":true,"markers":false,"loadIcons":false,"custom":[{"title":"Tools","icon":"<i class=\"fas fa-gear\"></i>","content":"<ul class=\"slide-menu-items\">\n<li class=\"slide-tool-item active\" data-item=\"0\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.fullscreen(event)\"><kbd>f</kbd> Fullscreen</a></li>\n<li class=\"slide-tool-item\" data-item=\"1\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.speakerMode(event)\"><kbd>s</kbd> Speaker View</a></li>\n<li class=\"slide-tool-item\" data-item=\"2\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>o</kbd> Slide Overview</a></li>\n<li class=\"slide-tool-item\" data-item=\"3\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.overview(event)\"><kbd>e</kbd> PDF Export Mode</a></li>\n<li class=\"slide-tool-item\" data-item=\"4\"><a href=\"#\" onclick=\"RevealMenuToolHandlers.keyboardHelp(event)\"><kbd>?</kbd> Keyboard Help</a></li>\n</ul>"}],"openButton":true},
-'smaller': false,
+'smaller': true,
  
         // Display controls in the bottom right corner
         controls: false,
