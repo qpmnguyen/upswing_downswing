@@ -1,7 +1,7 @@
 ---
 title: "Surge calculation using epiprocess"
 author: "Quang Nguyen"
-date: "2022-04-13"
+date: "2022-06-28"
 output:
     #github_document: default
     html_document:

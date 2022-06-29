@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Quang Nguyen" />
+
+
+<title>Evaluating the multiple forecasters</title>
+
+<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.tab('show');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">Project Website</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Analyses
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+    <li>
+      <a href="upswing-CDC.html">Upswings compared to CDC</a>
+    </li>
+    <li>
+      <a href="ensemble-evaluation.html">Evaluating upswing classification for ensemble model</a>
+    </li>
+  </ul>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Evaluating the multiple forecasters</h1>
+<h4 class="author">Quang Nguyen</h4>
+<h4 class="date">Last compiled on 2022-06-28</h4>
+
+</div>
+
+
+<div id="data-pre-loading-and-processing" class="section level1">
+<h1>Data pre-loading and processing</h1>
+<pre class="r"><code>library(here)
+library(covidcast)
+library(epiprocess)
+library(zoltr)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(covidHubUtils)
+library(lubridate)
+library(rlang)
+library(patchwork)
+library(pROC)
+here::i_am(path = &quot;notebooks/multiple-forecaster.Rmd&quot;)
+source(here(&quot;R&quot;, &quot;utils.R&quot;))
+# (settings &lt;- get_settings(start_date = &quot;2020-06-01&quot;, end_date = &quot;2022-03-01&quot;))
+theme_set(theme_bw())</code></pre>
+<p>First let’s set some parameters and constants.</p>
+<pre class="r"><code>d_range &lt;- seq(ymd(&quot;2020-11-01&quot;), ymd(&quot;2022-06-01&quot;), by = 7)
+curr_date &lt;- &quot;2022-06-01&quot;
+h &lt;- 4
+wk_ahead &lt;- 1
+inc_case_targets &lt;- paste(1:h, &quot;wk ahead inc case&quot;)
+surge_thresh &lt;- 0.5
+min_inc &lt;- 20</code></pre>
+</div>
+<div id="loading-forecasts-and-underlying-data" class="section level1">
+<h1>Loading forecasts and underlying data</h1>
+<p>Using <code>covidHubUtils</code> and <code>zoltar</code> we load
+underlying data as well as forecasts for models available in the US hub.
+Here we retrieve US states incident case forecasts 1-4 weeks in
+advance.</p>
+<pre class="r"><code>models &lt;- c(&quot;COVIDhub-baseline&quot;, &quot;RobertWalraven-ESG&quot;, &quot;CovidAnalytics-DELPHI&quot;, &quot;USC-SI_kJalpha&quot;, 
+            &quot;COVIDhub-4_week_ensemble&quot;, &quot;CU-nochange&quot;, &quot;Karlen-pypm&quot;, &quot;CU-scenario_low&quot;, 
+            &quot;COVIDhub-ensemble&quot;)
+if (!file.exists(here(&quot;data&quot;, &quot;pred_data_20220608.rds&quot;))){
+    pred_case &lt;- load_forecasts(
+        models = models, 
+        dates = d_range, 
+        date_window_size = 6,
+        locations = state.name, 
+        types = &quot;point&quot;, 
+        targets = inc_case_targets, 
+        source = &quot;zoltar&quot;, 
+        verbose = FALSE, 
+        as_of = curr_date, 
+        hub = c(&quot;US&quot;)
+    )
+    saveRDS(pred_case, file = here(&quot;data&quot;, &quot;pred_data_20220608.rds&quot;))
+} else {
+    pred_case &lt;- readRDS(file = here(&quot;data&quot;, &quot;pred_data_20220608.rds&quot;))
+}
+
+ggplot(pred_case %&gt;% filter(horizon == 4), aes(x = model, y = target_end_date)) + 
+    geom_point() + 
+    labs(x = &quot;Models&quot;, y = &quot;4-week ahead target end date&quot;) +
+    coord_flip()</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-3-1.png" /><!-- --></p>
+<p>Let’s load the corresponding truth data</p>
+<pre class="r"><code>truth_data &lt;- load_truth(
+    truth_source = &quot;JHU&quot;, 
+    target_variable = &quot;inc case&quot;, 
+    locations = state.name
+)
+
+true_range &lt;- pred_case %&gt;% pull(target_end_date) %&gt;% 
+    unique() %&gt;% 
+    lubridate::as_date()
+
+# convert truth_data to epi_df
+truth_epidf &lt;- truth_data %&gt;% 
+    select(-c(model, location, target_variable, location_name, 
+              abbreviation, full_location_name)) %&gt;% 
+    dplyr::rename(&quot;time_value&quot; = &quot;target_end_date&quot;) %&gt;%
+    filter(time_value %in% true_range) %&gt;%
+    as_epi_df(geo_type = &quot;state&quot;)
+
+truth_epidf</code></pre>
+<pre><code>## An `epi_df` object, with metadata:
+## * geo_type  = state
+## * time_type = day
+## * as_of     = 2022-06-28 11:29:15
+## 
+## # A tibble: 4,350 × 5
+##    geo_value time_value value population geo_type
+##  * &lt;chr&gt;     &lt;date&gt;     &lt;dbl&gt;      &lt;dbl&gt; &lt;chr&gt;   
+##  1 al        2020-10-31  9782    4903185 state   
+##  2 al        2020-11-07  9905    4903185 state   
+##  3 al        2020-11-14 12325    4903185 state   
+##  4 al        2020-11-21 14865    4903185 state   
+##  5 al        2020-11-28 14285    4903185 state   
+##  6 al        2020-12-05 22596    4903185 state   
+##  7 al        2020-12-12 25252    4903185 state   
+##  8 al        2020-12-19 27063    4903185 state   
+##  9 al        2020-12-26 23554    4903185 state   
+## 10 al        2021-01-02 26000    4903185 state   
+## # … with 4,340 more rows</code></pre>
+</div>
+<div
+id="surge-classification-using-relative-change-growth-rate-formulation"
+class="section level1">
+<h1>Surge classification using relative change growth rate
+formulation</h1>
+<p>We define surge for a given date using relative change growth rate
+formulation times the bandwidth using the implementation from
+<code>epiprocess</code>:</p>
+<p><span class="math display">\[\frac{1}{h} *
+\left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} *
+\left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} *
+\left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t =
+T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right) =
+\frac{1}{h} R^{h}_{T + h}\]</span></p>
+<p>A surge is defined for time-point <span
+class="math inline">\(T\)</span> as the difference in cumulative
+incident cases between the periods of <span
+class="math inline">\(T+1\)</span> and <span
+class="math inline">\(T+h\)</span> and <span
+class="math inline">\(T\)</span> and <span
+class="math inline">\(T-h\)</span>. As such, an <span
+class="math inline">\(h\)</span>-week ahead forecaster is a nowcaster of
+whether or not we’re currently in a surge. Here, we classify for each
+week whether it is a surge based on it’s <span
+class="math inline">\(h\)</span>-week-ahead and <span
+class="math inline">\(h\)</span>-week-prior data. An upswing is defined
+as the point at the beginning of a surge. Here we used the threshold of
+50% increase in cumulative difference in the <span
+class="math inline">\(h\)</span>-week-ahead compared to <span
+class="math inline">\(h\)</span>-week-prior data.</p>
+<pre class="r"><code>truth_epidf &lt;- truth_epidf %&gt;% 
+    mutate(gr = growth_rate(y = value, method = &quot;rel_change&quot;, h = h) * h) %&gt;%
+    mutate(surge = case_when(
+        gr &gt;= surge_thresh &amp; value &gt;= min_inc ~ TRUE,
+        TRUE ~ FALSE
+    )) 
+
+truth_epidf &lt;- truth_epidf %&gt;% 
+    group_by(geo_value) %&gt;% epi_slide(~{
+        bef &lt;- .x$surge[1]
+        focal &lt;- .x$surge[2]
+        if (is.na(focal)){
+            out &lt;- NA
+        } else {
+            if (bef == FALSE &amp; focal == TRUE){
+                out &lt;- TRUE
+            } else if (bef == TRUE &amp; focal == FALSE){
+                out &lt;- FALSE
+            } else {
+                out &lt;- FALSE
+            }
+        }
+        return(out)
+}, n = 2 * 7 * 1, align = &quot;right&quot;, new_col_name = &quot;upswing&quot;)
+
+ggplot(truth_epidf %&gt;% filter(geo_value == &quot;al&quot;), aes(x = time_value, y = value)) +
+    geom_point(aes(col = surge, shape = upswing), size = 2.5) + geom_line(alpha = 0.5) + 
+    labs(x = &quot;Weekly data&quot;, y = &quot;Incident cases by week&quot;)</code></pre>
+<pre><code>## Warning: Removed 1 rows containing missing values (geom_point).</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-5-1.png" /><!-- --></p>
+</div>
+<div id="nowcasting-surges" class="section level1">
+<h1>Nowcasting surges</h1>
+<p>Here we use the following procedures for a focal timepoint <span
+class="math inline">\(T\)</span> and bandwidth <span
+class="math inline">\(h\)</span> (for example, 4)</p>
+<ol style="list-style-type: decimal">
+<li>We take a time period from <span class="math inline">\(T+1-
+h\)</span> to <span class="math inline">\(T+h\)</span>. For example at
+2021-01-23, we’d be taking the period from 2021-01-02 to
+2021-02-20.<br />
+</li>
+<li>We take the truth period to be from <span
+class="math inline">\(T+1-h\)</span> to <span
+class="math inline">\(T\)</span> (inclusive) and the forecasting period
+to be from <span class="math inline">\(T+1\)</span> to <span
+class="math inline">\(T+h\)</span>. The truth period would have real
+underlying incident cases while the forecasting period has forecast
+incident cases at times 1-<span class="math inline">\(h\)</span> weeks
+ahead. Due to the forecasting date being on Monday instead of exactly
+one week before the proposed target date, we take forecast incident
+values from the forecast date closest to the time period defined at
+<span class="math inline">\(T+1\)</span>. For example, at 2021-01-23, we
+would take forecast values for 2021-01-30 onwards from a forecast date
+of 2021-01-25.<br />
+</li>
+<li>We compute the growth rate at time <span
+class="math inline">\(T\)</span> using these two periods as per the
+formula above<br />
+</li>
+<li>We then classify periods as surges using the definition and
+thresholds defined above.</li>
+</ol>
+<pre class="r"><code>forecast &lt;- pred_case %&gt;% dplyr::rename(&quot;pred&quot; = value, &quot;time_value&quot; = target_end_date)
+actual &lt;- truth_epidf %&gt;% dplyr::rename(&quot;obs&quot; = value)
+
+combined &lt;- left_join(actual, forecast) %&gt;% 
+    select(geo_value, population, geo_type, obs, pred, 
+           time_value, forecast_date, model, horizon, surge, upswing)</code></pre>
+<pre><code>## Joining, by = c(&quot;geo_value&quot;, &quot;time_value&quot;, &quot;population&quot;, &quot;geo_type&quot;)</code></pre>
+<pre class="r"><code>combined &lt;- combined %&gt;% ungroup() %&gt;% as_epi_df()
+head(combined)</code></pre>
+<pre><code>## # A tibble: 6 × 11
+##   geo_value time_value population geo_type   obs  pred forecast_date model      
+##   &lt;chr&gt;     &lt;date&gt;          &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt; &lt;dbl&gt; &lt;date&gt;        &lt;chr&gt;      
+## 1 ak        2020-10-31     731545 state     2812 1725  2020-10-26    COVIDhub-b…
+## 2 ak        2020-10-31     731545 state     2812 1557. 2020-10-26    RobertWalr…
+## 3 ak        2020-10-31     731545 state     2812 1039  2020-10-26    CovidAnaly…
+## 4 ak        2020-10-31     731545 state     2812 1664  2020-10-26    COVIDhub-4…
+## 5 ak        2020-10-31     731545 state     2812 1664  2020-10-26    COVIDhub-e…
+## 6 ak        2020-11-07     731545 state     2951 1725  2020-10-26    COVIDhub-b…
+## # … with 3 more variables: horizon &lt;chr&gt;, surge &lt;lgl&gt;, upswing &lt;lgl&gt;</code></pre>
+<p>Let’s define the slide function</p>
+<pre class="r"><code># this function combines real case counts from time points t-h to t and forecasted 
+# case counts from t+1 to t+h. Growth rate at time t is then estimated using the relative change 
+# method
+mismatch_slide &lt;- function(slide_df, h){
+    query_dates &lt;- slide_df %&gt;% pull(time_value) %&gt;% unique() 
+    req_len &lt;- h * 2
+    # if not enough weeks for prediction
+    if (length(query_dates) != req_len){ 
+        # this is an exception for when the dates are truncated at the end and beginning of the interval
+        out &lt;- NA_real_
+    } else {
+        # true dates, pred dates and ref dates 
+        t_date &lt;- query_dates[1:(req_len - h)]
+        ref &lt;- tail(t_date, n = 1)
+        p_date &lt;- query_dates[(req_len - h + 1):req_len]
+        #print(query_dates)
+        #print(ref)
+        f_date &lt;- slide_df %&gt;% 
+            filter(time_value == head(p_date, n = 1) &amp; horizon == 1) %&gt;%
+            pull(forecast_date) %&gt;% unique()
+        
+        if (length(f_date) == 0){
+            # exceptions where there are no relevant forecasts for when the time step 1 ahead of 
+            # the reference date
+            out &lt;- NA_real_
+        } else {
+            # get predicted values 
+            pred &lt;- slide_df %&gt;% filter(forecast_date == f_date) %&gt;% 
+                dplyr::pull(pred)
+            
+            if (length(pred) &lt; h){
+                # this exception is when the model does not forecast $h$ weeks in advance 
+                # (e.g. h = 4 but horizon only extends to 3)
+                out &lt;- NA_real_
+            } else {
+                # get true values 
+                obs &lt;- slide_df %&gt;% filter(time_value %in% t_date) %&gt;% 
+                    select(time_value, obs) %&gt;% 
+                    distinct() %&gt;% pull(obs)
+                
+                # put everything in an epi_df for posterity
+                new_df &lt;- tibble(
+                    time_value = c(t_date, p_date), 
+                    value = c(obs, pred), 
+                    geo_value = &quot;placeholder&quot;
+                ) %&gt;% as_epi_df()
+            
+                out &lt;- new_df %&gt;% 
+                    mutate(gr_pred = growth_rate(y = value, h = h, method = &quot;rel_change&quot;) * h) %&gt;% 
+                    filter(time_value == ref) %&gt;% pull(gr_pred)
+            }
+        }
+    }
+    return(out)
+}</code></pre>
+<p>Let’s use this with <code>epi_slide</code> function and loop through
+all the models</p>
+<pre class="r"><code>if (!file.exists(here(&quot;output&quot;, &quot;calc_gr.rds&quot;))){
+    # this step takes about 20 minutes 
+    begin &lt;- Sys.time()
+    gradient_calc &lt;- combined %&gt;% 
+        group_by(geo_value, model) %&gt;% 
+        epi_slide(~mismatch_slide(.x, h = h), n = 2 * 7 * h, align = &quot;center&quot;, new_col_name = &quot;pred_gr&quot;) %&gt;% 
+        dplyr::ungroup() %&gt;%
+        dplyr::select(-c(forecast_date, horizon, pred)) %&gt;% distinct()
+    end &lt;- Sys.time()
+    print(end - begin)
+    saveRDS(gradient_calc, file = here(&quot;output&quot;, &quot;calc_gr.rds&quot;))
+} else {
+    gradient_calc &lt;- readRDS(file = here(&quot;output&quot;, &quot;calc_gr.rds&quot;))
+}</code></pre>
+<p>Classify each time point as either a surge/upswing or not based on
+established criteria.</p>
+<pre class="r"><code>gradient_classif &lt;- gradient_calc %&gt;%
+    mutate(surge_pred = case_when(
+        pred_gr &gt;= surge_thresh &amp; obs &gt;= min_inc ~ TRUE,
+        is.na(pred_gr) ~ NA, 
+        TRUE ~ FALSE
+    )) %&gt;% group_by(geo_value, model) %&gt;% 
+    epi_slide(~{
+        bef &lt;- .x$surge_pred[1]
+        focal &lt;- .x$surge_pred[2]
+        if (is.na(focal) | is.na(bef)){
+            out &lt;- NA
+        } else {
+            if (bef == FALSE &amp; focal == TRUE){
+                out &lt;- TRUE
+            } else if (bef == TRUE &amp; focal == FALSE){
+                out &lt;- FALSE
+            } else {
+                out &lt;- FALSE
+            }
+        }
+        return(out)
+    }, n = 2 * 7 * 1, align = &quot;right&quot;, new_col_name = &quot;upswing_pred&quot;)
+    
+
+head(gradient_classif)</code></pre>
+<pre><code>## # A tibble: 6 × 11
+##   geo_value model     time_value population geo_type   obs surge upswing pred_gr
+##   &lt;chr&gt;     &lt;chr&gt;     &lt;date&gt;          &lt;dbl&gt; &lt;chr&gt;    &lt;dbl&gt; &lt;lgl&gt; &lt;lgl&gt;     &lt;dbl&gt;
+## 1 ak        CovidAna… 2020-10-31     731545 state     2812 FALSE NA      NA     
+## 2 ak        CovidAna… 2020-11-07     731545 state     2951 FALSE FALSE   NA     
+## 3 ak        CovidAna… 2020-11-14     731545 state     3846 FALSE FALSE   NA     
+## 4 ak        CovidAna… 2020-11-21     731545 state     4080 FALSE FALSE    0.346 
+## 5 ak        CovidAna… 2020-11-28     731545 state     4225 FALSE FALSE    0.0266
+## 6 ak        CovidAna… 2020-12-05     731545 state     4829 FALSE FALSE   -0.258 
+## # … with 2 more variables: surge_pred &lt;lgl&gt;, upswing_pred &lt;lgl&gt;</code></pre>
+<p>Perform evaluation</p>
+<pre class="r"><code>surge_eval &lt;- map_dfr(models, ~{
+    misclass_surge &lt;- gradient_classif %&gt;% ungroup() %&gt;% 
+        filter(model == .x) %&gt;% 
+        filter(!is.na(surge_pred)) %&gt;% 
+        summarise(misclass = mean(surge != surge_pred), 
+                  sens = sum(surge &amp; surge_pred)/sum(surge), 
+                  spec = sum(!surge &amp; !surge_pred)/sum(!surge))
+    pmod &lt;- pROC::roc(surge ~ pred_gr, data = gradient_classif %&gt;% filter(model == .x), 
+                      subset = !is.na(surge_pred))
+    misclass_surge &lt;- mutate(misclass_surge, auc = round(as.numeric(pmod$auc),3), type = &quot;surge&quot;)
+    misclass_surge &lt;- misclass_surge %&gt;% mutate(model = .x)
+        
+})
+
+upswing_eval &lt;- map_dfr(models, ~{
+    misclass_upswing &lt;- gradient_classif %&gt;% ungroup() %&gt;% 
+        filter(model == .x) %&gt;% 
+        filter(!is.na(upswing_pred)) %&gt;% 
+        summarise(misclass = mean(upswing != upswing_pred),
+                  upswing_prev = mean(upswing),
+                  sens = sum(upswing &amp; upswing_pred)/sum(upswing), 
+                  spec = sum(!upswing &amp; !upswing_pred)/sum(!upswing))
+    pmod &lt;- pROC::roc(upswing ~ pred_gr, data = gradient_classif %&gt;% filter(model == .x), 
+                      subset = !is.na(upswing_pred))
+    misclass_upswing &lt;- mutate(misclass_upswing, auc = round(as.numeric(pmod$auc),3), type = &quot;upswing&quot;)
+    misclass_upswing &lt;- misclass_upswing %&gt;% mutate(model = .x)
+        
+})
+
+saveRDS(upswing_eval, file = here(&quot;output&quot;, &quot;upswing_eval.rds&quot;))
+saveRDS(surge_eval, file = here(&quot;output&quot;, &quot;surge_eval.rds&quot;))
+knitr::kable(surge_eval)</code></pre>
+<table>
+<colgroup>
+<col width="14%" />
+<col width="14%" />
+<col width="14%" />
+<col width="8%" />
+<col width="8%" />
+<col width="37%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="right">misclass</th>
+<th align="right">sens</th>
+<th align="right">spec</th>
+<th align="right">auc</th>
+<th align="left">type</th>
+<th align="left">model</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.2283544</td>
+<td align="right">0.3076923</td>
+<td align="right">0.9700036</td>
+<td align="right">0.848</td>
+<td align="left">surge</td>
+<td align="left">COVIDhub-baseline</td>
+</tr>
+<tr class="even">
+<td align="right">0.2375130</td>
+<td align="right">0.2826283</td>
+<td align="right">0.9575558</td>
+<td align="right">0.796</td>
+<td align="left">surge</td>
+<td align="left">RobertWalraven-ESG</td>
+</tr>
+<tr class="odd">
+<td align="right">0.2556164</td>
+<td align="right">0.2063179</td>
+<td align="right">0.9510808</td>
+<td align="right">0.542</td>
+<td align="left">surge</td>
+<td align="left">CovidAnalytics-DELPHI</td>
+</tr>
+<tr class="even">
+<td align="right">0.1792767</td>
+<td align="right">0.5835498</td>
+<td align="right">0.9205539</td>
+<td align="right">0.848</td>
+<td align="left">surge</td>
+<td align="left">USC-SI_kJalpha</td>
+</tr>
+<tr class="odd">
+<td align="right">0.1951899</td>
+<td align="right">0.4167371</td>
+<td align="right">0.9707264</td>
+<td align="right">0.870</td>
+<td align="left">surge</td>
+<td align="left">COVIDhub-4_week_ensemble</td>
+</tr>
+<tr class="even">
+<td align="right">0.1846753</td>
+<td align="right">0.5290043</td>
+<td align="right">0.9380334</td>
+<td align="right">0.842</td>
+<td align="left">surge</td>
+<td align="left">CU-nochange</td>
+</tr>
+<tr class="odd">
+<td align="right">0.1548223</td>
+<td align="right">0.7113885</td>
+<td align="right">0.8856873</td>
+<td align="right">0.880</td>
+<td align="left">surge</td>
+<td align="left">Karlen-pypm</td>
+</tr>
+<tr class="even">
+<td align="right">0.1960526</td>
+<td align="right">0.4709507</td>
+<td align="right">0.9459459</td>
+<td align="right">0.836</td>
+<td align="left">surge</td>
+<td align="left">CU-scenario_low</td>
+</tr>
+<tr class="odd">
+<td align="right">0.1424390</td>
+<td align="right">0.5243446</td>
+<td align="right">0.9749340</td>
+<td align="right">0.871</td>
+<td align="left">surge</td>
+<td align="left">COVIDhub-ensemble</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>knitr::kable(upswing_eval)</code></pre>
+<table>
+<colgroup>
+<col width="12%" />
+<col width="15%" />
+<col width="12%" />
+<col width="12%" />
+<col width="7%" />
+<col width="9%" />
+<col width="30%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th align="right">misclass</th>
+<th align="right">upswing_prev</th>
+<th align="right">sens</th>
+<th align="right">spec</th>
+<th align="right">auc</th>
+<th align="left">type</th>
+<th align="left">model</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="right">0.0853846</td>
+<td align="right">0.0451282</td>
+<td align="right">0.0568182</td>
+<td align="right">0.9551557</td>
+<td align="right">0.518</td>
+<td align="left">upswing</td>
+<td align="left">COVIDhub-baseline</td>
+</tr>
+<tr class="even">
+<td align="right">0.0826558</td>
+<td align="right">0.0436314</td>
+<td align="right">0.0062112</td>
+<td align="right">0.9589119</td>
+<td align="right">0.575</td>
+<td align="left">upswing</td>
+<td align="left">RobertWalraven-ESG</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0751515</td>
+<td align="right">0.0463636</td>
+<td align="right">0.0065359</td>
+<td align="right">0.9694948</td>
+<td align="right">0.637</td>
+<td align="left">upswing</td>
+<td align="left">CovidAnalytics-DELPHI</td>
+</tr>
+<tr class="even">
+<td align="right">0.1057692</td>
+<td align="right">0.0452183</td>
+<td align="right">0.1954023</td>
+<td align="right">0.9273272</td>
+<td align="right">0.559</td>
+<td align="left">upswing</td>
+<td align="left">USC-SI_kJalpha</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0871795</td>
+<td align="right">0.0451282</td>
+<td align="right">0.0511364</td>
+<td align="right">0.9535446</td>
+<td align="right">0.501</td>
+<td align="left">upswing</td>
+<td align="left">COVIDhub-4_week_ensemble</td>
+</tr>
+<tr class="even">
+<td align="right">0.1058667</td>
+<td align="right">0.0466667</td>
+<td align="right">0.1542857</td>
+<td align="right">0.9303497</td>
+<td align="right">0.541</td>
+<td align="left">upswing</td>
+<td align="left">CU-nochange</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0846325</td>
+<td align="right">0.0378619</td>
+<td align="right">0.1176471</td>
+<td align="right">0.9467593</td>
+<td align="right">0.496</td>
+<td align="left">upswing</td>
+<td align="left">Karlen-pypm</td>
+</tr>
+<tr class="even">
+<td align="right">0.1019178</td>
+<td align="right">0.0413699</td>
+<td align="right">0.0662252</td>
+<td align="right">0.9339811</td>
+<td align="right">0.502</td>
+<td align="left">upswing</td>
+<td align="left">CU-scenario_low</td>
+</tr>
+<tr class="odd">
+<td align="right">0.0660000</td>
+<td align="right">0.0320000</td>
+<td align="right">0.0156250</td>
+<td align="right">0.9643595</td>
+<td align="right">0.619</td>
+<td align="left">upswing</td>
+<td align="left">COVIDhub-ensemble</td>
+</tr>
+</tbody>
+</table>
+<p>Visualize performance values</p>
+<pre class="r"><code>ggplot(surge_eval, aes(y = misclass, x = reorder(model, -misclass))) + 
+    coord_flip() + geom_point() + 
+    labs(x = &quot;Models&quot;, y = &quot;Misclassification&quot;, title = str_wrap(&quot;Classifying whether a week is &#39;surging&#39; based on growth rate estimation&quot;, width = 50))</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-11-1.png" /><!-- --></p>
+<pre class="r"><code>ggplot(upswing_eval, aes(y = misclass, x = reorder(model, -misclass))) + 
+    coord_flip() + geom_point() + 
+    labs(x = &quot;Models&quot;, y = &quot;Misclassification&quot;, title = str_wrap(&quot;Classifying whether a week is an upswing or the beginning of the surge period&quot;, width = 50))</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-12-1.png" /><!-- --></p>
+<p>ROC curves for upswing and surge calculations</p>
+<pre class="r"><code>library(pals)
+colors &lt;- pals::glasbey(n = 9)
+
+par(mfrow = c(1,2))
+
+suppressMessages(mods &lt;- map(models, ~{
+    pROC::roc(upswing ~ pred_gr, data = gradient_classif %&gt;% filter(model == .x), 
+                  subset = !is.na(surge_pred), verbose = FALSE)
+}))
+names(mods) &lt;- models
+plot(mods[[1]], col = colors[1], legacy.axes = TRUE, main = &quot;ROC curves for surge prediction&quot;)
+for (i in 2:length(mods)){
+    plot(mods[[i]], add = TRUE, col = colors[i])
+}
+
+legend(0.4,0.5,legend=models, col = colors, lty = 1, cex = 0.8)
+
+
+suppressMessages(mods &lt;- map(models, ~{
+    pROC::roc(upswing ~ pred_gr, data = gradient_classif %&gt;% filter(model == .x), 
+                  subset = !is.na(upswing_pred), verbose = FALSE)
+}))
+names(mods) &lt;- models
+plot(mods[[1]], col = colors[1], legacy.axes = TRUE, main = &quot;ROC curves for upswing prediction&quot;)
+for (i in 2:length(mods)){
+    plot(mods[[i]], add = TRUE, col = colors[i])
+}
+legend(0.4,0.5,legend=models, col = colors, lty = 1, cex = 0.8)</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-13-1.png" /><!-- --></p>
+</div>
+<div id="ensemble-only-evaluation" class="section level1">
+<h1>Ensemble only evaluation</h1>
+<pre class="r"><code>ensemble &lt;- gradient_classif %&gt;% filter(model == models[5]) 
+
+p1 &lt;- ggplot(ensemble %&gt;% filter(geo_value == &quot;ca&quot;), 
+       aes(x = time_value, y = obs)) + geom_point(aes(col = surge)) + geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Surge classification from real data&quot;, y = &quot;Incident cases&quot;)
+p2 &lt;- ggplot(ensemble %&gt;% filter(geo_value == &quot;ca&quot;), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = surge_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Nowcasting surges&quot;, y = &quot;Incident cases&quot;)
+p1 / p2 + plot_annotation(&quot;Ensemble model nowcasting surges for the state of California&quot;)</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-14-1.png" /><!-- --></p>
+<p>Plotting incident cases and surge classification</p>
+<pre class="r"><code>p1 &lt;- ggplot(ensemble %&gt;% filter(geo_value == &quot;ca&quot;), 
+             aes(x = time_value, y = obs)) +
+    geom_point(aes(col = upswing)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Upswing classification from real data&quot;, y = &quot;Incident cases&quot;)
+p2 &lt;- ggplot(ensemble %&gt;% filter(geo_value == &quot;ca&quot;), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = upswing_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = &quot;Week&quot;, col = &quot;Nowcasting upswings&quot;, y = &quot;Incident cases&quot;)
+
+p1 /p2 + plot_annotation(title = &quot;Ensemble model nowcasting upswings for the state of California&quot;)</code></pre>
+<p><img
+src="multiple-forecaster_files/figure-html/unnamed-chunk-15-1.png" /><!-- --></p>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

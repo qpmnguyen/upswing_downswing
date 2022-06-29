@@ -1,7 +1,7 @@
 ---
 title: "Evaluating the ensemble point forecast"
 author: "Quang Nguyen"
-date: "Last compiled on 2022-05-26"
+date: "Last compiled on 2022-06-28"
 output: 
     #github_document: default
     html_document:
@@ -157,7 +157,7 @@ ggplot(truth_epidf, aes(x = time_value, y = value)) +
     labs(x = "Weekly data", y = "Incident cases by week")
 ```
 
-![](ensemble-evaluation_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
+![](ensemble-evaluation_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
 
 # Nowcasting surges    
 
@@ -186,8 +186,10 @@ mismatch_slide <- function(slide_df, pred, h){
         t_data <- slide_df %>% filter(time_value %in% t_date) %>% 
             mutate(type = "true")
         # due to weird issues, the ref date + 1 week should be the 1 week ahead forecast
-        f_date <- pred %>% filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>% 
+        f_date <- pred %>% 
+            filter(target_end_date == head(p_date, n = 1) & horizon == 1) %>% 
             pull(forecast_date) %>% unique()
+        
         p_data <- pred %>% 
             filter(forecast_date == f_date) %>%
             filter(target_end_date %in% p_date) %>% 
@@ -221,30 +223,28 @@ head(combined_df, n = 20)
 
 ```
 ## # A tibble: 20 × 11
-##    geo_value time_value value population geo_type      gr surge ensembl_gr
-##    <chr>     <date>     <dbl>      <dbl> <chr>      <dbl> <lgl>      <dbl>
-##  1 ma        2021-01-02 34579    6892503 state    -0.0132 FALSE    NA     
-##  2 ma        2021-01-09 42954    6892503 state    -0.356  FALSE    NA     
-##  3 ma        2021-01-16 38591    6892503 state    -0.477  FALSE    NA     
-##  4 ma        2021-01-23 30367    6892503 state    -0.511  FALSE    -0.246 
-##  5 ma        2021-01-30 25267    6892503 state    -0.575  FALSE    -0.415 
-##  6 ma        2021-02-06 19467    6892503 state    -0.568  FALSE    -0.470 
-##  7 ma        2021-02-13 15068    6892503 state    -0.504  FALSE    -0.571 
-##  8 ma        2021-02-20 11869    6892503 state    -0.371  FALSE    -0.562 
-##  9 ma        2021-02-27 11916    6892503 state    -0.179  FALSE    -0.405 
-## 10 ma        2021-03-06 10251    6892503 state     0.0855 FALSE    -0.329 
-## 11 ma        2021-03-13 10685    6892503 state     0.274  FALSE    -0.148 
-## 12 ma        2021-03-20 12241    6892503 state     0.295  FALSE     0.108 
-## 13 ma        2021-03-27 14699    6892503 state     0.128  FALSE     0.279 
-## 14 ma        2021-04-03 15676    6892503 state    -0.117  FALSE     0.254 
-## 15 ma        2021-04-10 14346    6892503 state    -0.316  FALSE    -0.0160
-## 16 ma        2021-04-17 13672    6892503 state    -0.482  FALSE    -0.132 
-## 17 ma        2021-04-24 10320    6892503 state    -0.570  FALSE    -0.463 
-## 18 ma        2021-05-01  8709    6892503 state    -0.649  FALSE    -0.547 
-## 19 ma        2021-05-08  6261    6892503 state    -0.707  FALSE    -0.600 
-## 20 ma        2021-05-15  4950    6892503 state    -0.757  FALSE    -0.619 
-## # … with 3 more variables: baseline_gr <dbl>, surge_ensembl <lgl>,
-## #   surge_baseline <lgl>
+##    geo_value time_value value population geo_type      gr surge ensembl_gr baseline_gr surge_ensembl surge_baseline
+##    <chr>     <date>     <dbl>      <dbl> <chr>      <dbl> <lgl>      <dbl>       <dbl> <lgl>         <lgl>         
+##  1 ma        2021-01-02 34579    6892503 state    -0.0132 FALSE    NA         NA       NA            NA            
+##  2 ma        2021-01-09 42954    6892503 state    -0.356  FALSE    NA         NA       NA            NA            
+##  3 ma        2021-01-16 38591    6892503 state    -0.477  FALSE    NA         NA       NA            NA            
+##  4 ma        2021-01-23 30367    6892503 state    -0.511  FALSE    -0.246     -0.171   FALSE         FALSE         
+##  5 ma        2021-01-30 25267    6892503 state    -0.575  FALSE    -0.415     -0.263   FALSE         FALSE         
+##  6 ma        2021-02-06 19467    6892503 state    -0.568  FALSE    -0.470     -0.315   FALSE         FALSE         
+##  7 ma        2021-02-13 15068    6892503 state    -0.504  FALSE    -0.571     -0.332   FALSE         FALSE         
+##  8 ma        2021-02-20 11869    6892503 state    -0.371  FALSE    -0.562     -0.338   FALSE         FALSE         
+##  9 ma        2021-02-27 11916    6892503 state    -0.179  FALSE    -0.405     -0.183   FALSE         FALSE         
+## 10 ma        2021-03-06 10251    6892503 state     0.0855 FALSE    -0.329     -0.165   FALSE         FALSE         
+## 11 ma        2021-03-13 10685    6892503 state     0.274  FALSE    -0.148     -0.0443  FALSE         FALSE         
+## 12 ma        2021-03-20 12241    6892503 state     0.295  FALSE     0.108      0.0858  FALSE         FALSE         
+## 13 ma        2021-03-27 14699    6892503 state     0.128  FALSE     0.279      0.228   FALSE         FALSE         
+## 14 ma        2021-04-03 15676    6892503 state    -0.117  FALSE     0.254      0.176   FALSE         FALSE         
+## 15 ma        2021-04-10 14346    6892503 state    -0.316  FALSE    -0.0160     0.00741 FALSE         FALSE         
+## 16 ma        2021-04-17 13672    6892503 state    -0.482  FALSE    -0.132     -0.0634  FALSE         FALSE         
+## 17 ma        2021-04-24 10320    6892503 state    -0.570  FALSE    -0.463     -0.236   FALSE         FALSE         
+## 18 ma        2021-05-01  8709    6892503 state    -0.649  FALSE    -0.547     -0.260   FALSE         FALSE         
+## 19 ma        2021-05-08  6261    6892503 state    -0.707  FALSE    -0.600     -0.357   FALSE         FALSE         
+## 20 ma        2021-05-15  4950    6892503 state    -0.757  FALSE    -0.619     -0.345   FALSE         FALSE
 ```
 
 Plotting growth rate when estimated 
@@ -271,7 +271,7 @@ gr1
 ## Removed 7 row(s) containing missing values (geom_path).
 ```
 
-![](ensemble-evaluation_files/figure-html/unnamed-chunk-6-1.png)<!-- -->
+![](ensemble-evaluation_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
 
 ```r
 combined_df %>% filter(month(time_value) %in% c(6,7,8))
@@ -281,26 +281,24 @@ combined_df %>% filter(month(time_value) %in% c(6,7,8))
 ## An `epi_df` object, with metadata:
 ## * geo_type  = state
 ## * time_type = day
-## * as_of     = 2022-05-26 14:27:54
+## * as_of     = 2022-06-28 14:46:21
 ## 
 ## # A tibble: 13 × 11
-##    geo_value time_value value population geo_type     gr surge ensembl_gr
-##  * <chr>     <date>     <dbl>      <dbl> <chr>     <dbl> <lgl>      <dbl>
-##  1 ma        2021-06-05  1157    6892503 state    -0.807 FALSE     -0.779
-##  2 ma        2021-06-12   896    6892503 state    -0.729 FALSE     -0.736
-##  3 ma        2021-06-19   518    6892503 state    -0.360 FALSE     -0.730
-##  4 ma        2021-06-26   384    6892503 state     0.842 TRUE      -0.695
-##  5 ma        2021-07-03   400    6892503 state     3.39  TRUE      -0.598
-##  6 ma        2021-07-10   692    6892503 state     6.81  TRUE      -0.284
-##  7 ma        2021-07-17  1442    6892503 state     6.61  TRUE       0.684
-##  8 ma        2021-07-24  2908    6892503 state     4.25  TRUE       1.24 
-##  9 ma        2021-07-31  4600    6892503 state     2.53  TRUE       1.19 
-## 10 ma        2021-08-07  6615    6892503 state     1.52  TRUE       0.888
-## 11 ma        2021-08-14  8091    6892503 state     0.915 TRUE       0.476
-## 12 ma        2021-08-21  9249    6892503 state     0.654 TRUE       0.304
-## 13 ma        2021-08-28 10060    6892503 state     0.442 FALSE      0.181
-## # … with 3 more variables: baseline_gr <dbl>, surge_ensembl <lgl>,
-## #   surge_baseline <lgl>
+##    geo_value time_value value population geo_type     gr surge ensembl_gr baseline_gr surge_ensembl surge_baseline
+##  * <chr>     <date>     <dbl>      <dbl> <chr>     <dbl> <lgl>      <dbl>       <dbl> <lgl>         <lgl>         
+##  1 ma        2021-06-05  1157    6892503 state    -0.807 FALSE     -0.779      -0.594 FALSE         FALSE         
+##  2 ma        2021-06-12   896    6892503 state    -0.729 FALSE     -0.736      -0.512 FALSE         FALSE         
+##  3 ma        2021-06-19   518    6892503 state    -0.360 FALSE     -0.730      -0.545 FALSE         FALSE         
+##  4 ma        2021-06-26   384    6892503 state     0.842 TRUE      -0.695      -0.480 FALSE         FALSE         
+##  5 ma        2021-07-03   400    6892503 state     3.39  TRUE      -0.598      -0.272 FALSE         FALSE         
+##  6 ma        2021-07-10   692    6892503 state     6.81  TRUE      -0.284       0.388 FALSE         FALSE         
+##  7 ma        2021-07-17  1442    6892503 state     6.61  TRUE       0.684       0.977 TRUE          TRUE          
+##  8 ma        2021-07-24  2908    6892503 state     4.25  TRUE       1.24        1.14  TRUE          TRUE          
+##  9 ma        2021-07-31  4600    6892503 state     2.53  TRUE       1.19        0.908 TRUE          TRUE          
+## 10 ma        2021-08-07  6615    6892503 state     1.52  TRUE       0.888       0.700 TRUE          TRUE          
+## 11 ma        2021-08-14  8091    6892503 state     0.915 TRUE       0.476       0.457 FALSE         FALSE         
+## 12 ma        2021-08-21  9249    6892503 state     0.654 TRUE       0.304       0.296 FALSE         FALSE         
+## 13 ma        2021-08-28 10060    6892503 state     0.442 FALSE      0.181       0.183 FALSE         FALSE
 ```
 
 
@@ -325,7 +323,7 @@ p3 <- ggplot(combined_df, aes(x = time_value, y = value)) +
 p1 /p2/p3 + plot_layout(guides = "collect")
 ```
 
-![](ensemble-evaluation_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+![](ensemble-evaluation_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
 
 # Misclassification rate    
 

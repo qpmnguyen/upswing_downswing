@@ -14,7 +14,7 @@
 
 <title>Comparing surge definition to CDC</title>
 
-<script src="site_libs/header-attrs-2.12/header-attrs.js"></script>
+<script src="site_libs/header-attrs-2.14/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
@@ -337,7 +337,13 @@ div.tocify {
   </a>
   <ul class="dropdown-menu" role="menu">
     <li>
-      <a href="upswing-CDC.html">Upswings</a>
+      <a href="upswing-CDC.html">Upswings compared to CDC</a>
+    </li>
+    <li>
+      <a href="ensemble-evaluation.html">Evaluating upswing classification for ensemble model</a>
+    </li>
+    <li>
+      <a href="multiple-forecaster.html">Evaluating upswing with multiple forecasters</a>
     </li>
   </ul>
 </li>
@@ -363,7 +369,7 @@ div.tocify {
 
 <h1 class="title toc-ignore">Comparing surge definition to CDC</h1>
 <h4 class="author">Quang Nguyen</h4>
-<h4 class="date">Last compiled on 2022-04-13</h4>
+<h4 class="date">Last compiled on 2022-06-28</h4>
 
 </div>
 
@@ -383,28 +389,24 @@ source(here(&quot;R&quot;, &quot;utils.R&quot;))
 <p>Loading CDC Rt estimates</p>
 <pre class="r"><code>cdc_rt &lt;- read_csv(file = here(&quot;data&quot;, &quot;cdc_rt.csv&quot;)) %&gt;% select(-1)</code></pre>
 <pre><code>## New names:
-## * `` -&gt; ...1</code></pre>
-<pre><code>## Rows: 48106 Columns: 15
-## ── Column specification ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-## Delimiter: &quot;,&quot;
-## chr   (3): state, type, version
-## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90
-## lgl   (1): strat
-## date  (1): date
-## 
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+## Rows: 48106 Columns: 15
+## ── Column specification
+## ────────────────────────────────────────────────────────────────────────────────────────────────────────── Delimiter: &quot;,&quot; chr
+## (3): state, type, version dbl (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90 lgl (1):
+## strat date (1): date
+## ℹ Use `spec()` to retrieve the full column specification for this data. ℹ Specify the column types or set `show_col_types =
+## FALSE` to quiet this message.
+## • `` -&gt; `...1`</code></pre>
 <pre class="r"><code>cdc_gr &lt;- read_csv(file = here(&quot;data&quot;, &quot;cdc_gr.csv&quot;)) %&gt;% select(-1)</code></pre>
 <pre><code>## New names:
-## * `` -&gt; ...1
-## Rows: 42700 Columns: 15── Column specification ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-## Delimiter: &quot;,&quot;
-## chr   (3): state, type, version
-## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90
-## lgl   (1): strat
-## date  (1): date
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+## Rows: 42700 Columns: 15
+## ── Column specification
+## ────────────────────────────────────────────────────────────────────────────────────────────────────────── Delimiter: &quot;,&quot; chr
+## (3): state, type, version dbl (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90 lgl (1):
+## strat date (1): date
+## ℹ Use `spec()` to retrieve the full column specification for this data. ℹ Specify the column types or set `show_col_types =
+## FALSE` to quiet this message.
+## • `` -&gt; `...1`</code></pre>
 <pre class="r"><code>start_date &lt;- as.character(min(cdc_rt$date))
 end_date &lt;- as.character(max(cdc_rt$date))
 h &lt;- 4

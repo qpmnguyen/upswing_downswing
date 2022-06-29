@@ -10,3 +10,5 @@ navbar:
           href: upswing-CDC.html
         - text: "Evaluating upswing classification for ensemble model"
           href: ensemble-evaluation.html
+        - text: "Evaluating upswing with multiple forecasters"
+          href: multiple-forecaster.html

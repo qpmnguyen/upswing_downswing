@@ -1,7 +1,7 @@
 ---
 title: "Comparing surge definition to CDC"
 author: "Quang Nguyen"
-date: "Last compiled on 2022-04-13"
+date: "Last compiled on 2022-06-28"
 output: 
     #github_document: default
     html_document:
@@ -38,20 +38,14 @@ cdc_rt <- read_csv(file = here("data", "cdc_rt.csv")) %>% select(-1)
 
 ```
 ## New names:
-## * `` -> ...1
-```
-
-```
 ## Rows: 48106 Columns: 15
-## ── Column specification ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-## Delimiter: ","
-## chr   (3): state, type, version
-## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90
-## lgl   (1): strat
-## date  (1): date
-## 
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+## ── Column specification
+## ────────────────────────────────────────────────────────────────────────────────────────────────────────── Delimiter: "," chr
+## (3): state, type, version dbl (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90 lgl (1):
+## strat date (1): date
+## ℹ Use `spec()` to retrieve the full column specification for this data. ℹ Specify the column types or set `show_col_types =
+## FALSE` to quiet this message.
+## • `` -> `...1`
 ```
 
 ```r
@@ -60,15 +54,14 @@ cdc_gr <- read_csv(file = here("data", "cdc_gr.csv")) %>% select(-1)
 
 ```
 ## New names:
-## * `` -> ...1
-## Rows: 42700 Columns: 15── Column specification ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-## Delimiter: ","
-## chr   (3): state, type, version
-## dbl  (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90
-## lgl   (1): strat
-## date  (1): date
-## ℹ Use `spec()` to retrieve the full column specification for this data.
-## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+## Rows: 42700 Columns: 15
+## ── Column specification
+## ────────────────────────────────────────────────────────────────────────────────────────────────────────── Delimiter: "," chr
+## (3): state, type, version dbl (10): ...1, median, mean, sd, lower_20, upper_20, lower_50, upper_50, lower_90, upper_90 lgl (1):
+## strat date (1): date
+## ℹ Use `spec()` to retrieve the full column specification for this data. ℹ Specify the column types or set `show_col_types =
+## FALSE` to quiet this message.
+## • `` -> `...1`
 ```
 
 ```r

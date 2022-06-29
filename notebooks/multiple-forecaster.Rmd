@@ -2,13 +2,14 @@
 title: "Evaluating the multiple forecasters"
 author: "Quang Nguyen"
 date: "Last compiled on `r format(Sys.time(), '%Y-%m-%d')`"
-output: 
-    #github_document: default
-    html_document:
-        keep_md: yes
-        toc: true
-        toc_float: true
-        code_folding: hide
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    keep_md: yes
+    toc: yes
+    toc_float: yes
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -74,7 +75,9 @@ if (!file.exists(here("data", "pred_data_20220608.rds"))){
     pred_case <- readRDS(file = here("data", "pred_data_20220608.rds"))
 }
 
-ggplot(pred_case, aes(x = model, y = target_end_date)) + geom_point() + 
+ggplot(pred_case %>% filter(horizon == 4), aes(x = model, y = target_end_date)) + 
+    geom_point() + 
+    labs(x = "Models", y = "4-week ahead target end date") +
     coord_flip()
 ```
 
@@ -228,15 +231,21 @@ mismatch_slide <- function(slide_df, h){
 Let's use this with `epi_slide` function and loop through all the models  
 
 ```{r, cache = TRUE}
-begin <- Sys.time()
-gradient_calc <- combined %>% 
-    group_by(geo_value, model) %>% 
-    epi_slide(~mismatch_slide(.x, h = h), n = 2 * 7 * h, align = "center", new_col_name = "pred_gr") %>% 
-    dplyr::ungroup() %>%
-    dplyr::select(-c(forecast_date, horizon, pred)) %>% distinct()
-end <- Sys.time()
-print(end - begin)
-saveRDS(gradient_calc, file = here("output", "calc_gr.rds"))
+if (!file.exists(here("output", "calc_gr.rds"))){
+    # this step takes about 20 minutes 
+    begin <- Sys.time()
+    gradient_calc <- combined %>% 
+        group_by(geo_value, model) %>% 
+        epi_slide(~mismatch_slide(.x, h = h), n = 2 * 7 * h, align = "center", new_col_name = "pred_gr") %>% 
+        dplyr::ungroup() %>%
+        dplyr::select(-c(forecast_date, horizon, pred)) %>% distinct()
+    end <- Sys.time()
+    print(end - begin)
+    saveRDS(gradient_calc, file = here("output", "calc_gr.rds"))
+} else {
+    gradient_calc <- readRDS(file = here("output", "calc_gr.rds"))
+}
+    
 ```
 
 Classify each time point as either a surge/upswing or not based on established criteria.  
@@ -320,94 +329,68 @@ ggplot(upswing_eval, aes(y = misclass, x = reorder(model, -misclass))) +
     labs(x = "Models", y = "Misclassification", title = str_wrap("Classifying whether a week is an upswing or the beginning of the surge period", width = 50))
 ```
 
-```{r}
+ROC curves for upswing and surge calculations  
+
+```{r, fig.width=13}
 library(pals)
 colors <- pals::glasbey(n = 9)
+
+par(mfrow = c(1,2))
+
+suppressMessages(mods <- map(models, ~{
+    pROC::roc(upswing ~ pred_gr, data = gradient_classif %>% filter(model == .x), 
+                  subset = !is.na(surge_pred), verbose = FALSE)
+}))
+names(mods) <- models
+plot(mods[[1]], col = colors[1], legacy.axes = TRUE, main = "ROC curves for surge prediction")
+for (i in 2:length(mods)){
+    plot(mods[[i]], add = TRUE, col = colors[i])
+}
+
+legend(0.4,0.5,legend=models, col = colors, lty = 1, cex = 0.8)
+
 
 suppressMessages(mods <- map(models, ~{
     pROC::roc(upswing ~ pred_gr, data = gradient_classif %>% filter(model == .x), 
                   subset = !is.na(upswing_pred), verbose = FALSE)
 }))
 names(mods) <- models
-plot(mods[[1]], col = colors[1], legacy.axes = TRUE)
+plot(mods[[1]], col = colors[1], legacy.axes = TRUE, main = "ROC curves for upswing prediction")
 for (i in 2:length(mods)){
     plot(mods[[i]], add = TRUE, col = colors[i])
 }
-
 legend(0.4,0.5,legend=models, col = colors, lty = 1, cex = 0.8)
 ```
 
 
-# Ensemble only evaluation    
+# Ensemble only evaluation   
 
 ```{r}
-pred_case <- load_forecasts(
-    models = "COVIDhub-ensemble", 
-    dates = d_range, 
-    date_window_size = 6,
-    locations = state.name, 
-    types = "point", 
-    targets = inc_case_targets, 
-    source = "zoltar", 
-    verbose = FALSE, 
-    as_of = curr_date, 
-    hub = c("US")
-) 
+ensemble <- gradient_classif %>% filter(model == models[5]) 
 
-df <- forecast_surge_eval(source = .x)
-# Misclassification rate    
-misclass_surge <- df %>% ungroup(geo_value) %>% 
-    filter(!is.na(surge_pred)) %>% 
-    summarise(misclass = mean(surge != surge_pred), 
-              class_prop = mean(surge),
-              sens = sum(surge & surge_pred)/sum(surge), 
-              spec = sum(!surge & !surge_pred)/sum(!surge))
-
-pmod <- pROC::roc(surge ~ pred_gr, data = df, subset = !is.na(surge_pred))
-misclass_surge <- mutate(misclass_surge, auc = round(as.numeric(pmod$auc),3), type = "surge")
-
-misclass_upswing<- df %>% ungroup(geo_value) %>% 
-    filter(!is.na(upswing_pred)) %>% 
-    summarise(misclass = mean(upswing != upswing_pred), 
-              class_prop = mean(upswing),
-              sens = sum(upswing & upswing_pred)/sum(upswing), 
-              spec = sum(!upswing & !upswing_pred)/sum(!upswing))
-
-pmod <- pROC::roc(upswing ~ pred_gr, data = df, subset = !is.na(upswing_pred))
-misclass_upswing <- mutate(misclass_upswing, auc = round(as.numeric(pmod$auc),3), type = "upswing")
-results <- bind_rows(misclass_upswing, misclass_surge)
-print(results)
+p1 <- ggplot(ensemble %>% filter(geo_value == "ca"), 
+       aes(x = time_value, y = obs)) + geom_point(aes(col = surge)) + geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
+p2 <- ggplot(ensemble %>% filter(geo_value == "ca"), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = surge_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
+p1 / p2 + plot_annotation("Ensemble model nowcasting surges for the state of California")
 ```
 
 Plotting incident cases and surge classification   
 
 ```{r}
-p1 <- ggplot(df, aes(x = time_value, y = value)) +
-    geom_point(aes(col = surge)) + 
+p1 <- ggplot(ensemble %>% filter(geo_value == "ca"), 
+             aes(x = time_value, y = obs)) +
+    geom_point(aes(col = upswing)) + 
     geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
-p2 <- ggplot(df, aes(x = time_value, y = value)) + 
-    geom_point(aes(col = surge_pred)) + 
+    labs(x = "Week", col = "Upswing classification from real data", y = "Incident cases")
+p2 <- ggplot(ensemble %>% filter(geo_value == "ca"), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = upswing_pred)) + 
     geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
+    labs(x = "Week", col = "Nowcasting upswings", y = "Incident cases")
 
-p1 /p2
+p1 /p2 + plot_annotation(title = "Ensemble model nowcasting upswings for the state of California")
 
 ```
-
-
-```{r}
-p1 <- ggplot(df, aes(x = time_value, y = value)) +
-    geom_point(aes(col = surge)) + 
-    geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Surge classification from real data", y = "Incident cases")
-p2 <- ggplot(df, aes(x = time_value, y = value)) + 
-    geom_point(aes(col = surge_pred)) + 
-    geom_line(alpha = 0.5) + 
-    labs(x = "Week", col = "Nowcasting surges", y = "Incident cases")
-
-p1 /p2
-
-```
-
-

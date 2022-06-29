@@ -1,0 +1,263 @@
+---
+title: "Predicting surges and upswings before it occurs"
+author: Quang Nguyen & Jacob Bien
+date: 2022-06-30
+format: 
+    revealjs:
+        theme: simple
+        chalkboard: false 
+editor: visual
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+library(here)
+library(covidcast)
+library(epiprocess)
+library(tidyverse)
+library(ggsci)
+library(tsibble)
+library(covidHubUtils)
+library(lubridate)
+library(rlang)
+library(patchwork)
+library(pROC)
+library(glue)
+theme_set(theme_bw())
+
+d_range <- seq(ymd("2020-11-01"), ymd("2022-06-01"), by = 7)
+curr_date <- "2022-06-01"
+h <- 4
+wk_ahead <- 1
+inc_case_targets <- paste(1:h, "wk ahead inc case")
+surge_thresh <- 0.5
+min_inc <- 20
+
+
+forecast <- readRDS(file = here("data", "pred_data_20220608.rds"))
+truth_data <- load_truth(
+    truth_source = "JHU", 
+    target_variable = "inc case", 
+    locations = state.name
+)
+
+true_range <- forecast %>% pull(target_end_date) %>% 
+    unique() %>% 
+    lubridate::as_date()
+
+# convert truth_data to epi_df
+truth_epidf <- truth_data %>% 
+    select(-c(model, location, target_variable, location_name, 
+              abbreviation, full_location_name)) %>% 
+    dplyr::rename("time_value" = "target_end_date") %>%
+    filter(time_value %in% true_range) %>%
+    as_epi_df(geo_type = "state")
+
+truth_epidf <- truth_epidf %>% 
+    mutate(gr = growth_rate(y = value, method = "rel_change", h = h) * h) %>%
+    mutate(surge = case_when(
+        gr >= surge_thresh & value >= min_inc ~ TRUE,
+        TRUE ~ FALSE
+    )) 
+
+truth_epidf <- truth_epidf %>% 
+    group_by(geo_value) %>% epi_slide(~{
+        bef <- .x$surge[1]
+        focal <- .x$surge[2]
+        if (is.na(focal)){
+            out <- NA
+        } else {
+            if (bef == FALSE & focal == TRUE){
+                out <- TRUE
+            } else if (bef == TRUE & focal == FALSE){
+                out <- FALSE
+            } else {
+                out <- FALSE
+            }
+        }
+        return(out)
+}, n = 2 * 7 * 1, align = "right", new_col_name = "upswing")
+
+pred_gr <- readRDS(file = here("output", "calc_gr.rds"))
+pred_gr_classif <- pred_gr %>%
+    mutate(surge_pred = case_when(
+        pred_gr >= surge_thresh & obs >= min_inc ~ TRUE,
+        is.na(pred_gr) ~ NA, 
+        TRUE ~ FALSE
+    )) %>% group_by(geo_value, model) %>% 
+    epi_slide(~{
+        bef <- .x$surge_pred[1]
+        focal <- .x$surge_pred[2]
+        if (is.na(focal) | is.na(bef)){
+            out <- NA
+        } else {
+            if (bef == FALSE & focal == TRUE){
+                out <- TRUE
+            } else if (bef == TRUE & focal == FALSE){
+                out <- FALSE
+            } else {
+                out <- FALSE
+            }
+        }
+        return(out)
+    }, n = 2 * 7 * 1, align = "right", new_col_name = "upswing_pred")
+```
+
+## Motivation
+
+Insert quote [^1]
+
+[^1]: Challenges in training ensembles to forecast COVID-19 cases and deaths in the United States. [*forecasters.org*](https://forecasters.org/blog/2021/04/09/challenges-in-training-ensembles-to-forecast-covid-19-cases-and-deaths-in-the-united-states/)
+
+## Defining surges and upswings {.smaller}
+
+Previous definition of **surge**
+
+```{r, echo=FALSE}
+f_col <- c("p1" = "#9F2B68", "yes" = "#FFD700", "p2" = "#800020")
+focal <- "2021-01-02"
+p1_min <- ymd("2020-11-07")
+p1_max <- ymd("2020-11-28")
+p2_min <- ymd("2020-12-05")
+p2_max <- ymd("2020-12-26")
+
+ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>% 
+           mutate(label = case_when(
+               time_value == focal ~ "yes", 
+               TRUE ~ "no"
+           )), 
+       aes(x = time_value, y = value)) + 
+    geom_point(aes(col = label)) +
+    annotate("segment", x = as_date("2021-05-01"), 
+             xend = as_date("2020-12-12"), 
+             y = 100000, yend = 75000, size = 0.5, 
+             arrow = arrow(length = unit(.1,"cm"))) +
+    annotate(geom = "text",
+              y = 100100,
+              x = lubridate::as_date("2021-05-01"), 
+              label = "4-weeks prior", hjust = -0.05) + 
+    annotate("segment", x = as_date("2021-01-30"), 
+             xend = as_date("2020-11-21"), 
+             y = 75000, yend = 50000, size = 0.5, 
+             arrow = arrow(length = unit(.1,"cm"))) +
+    annotate(geom = "text",
+              y = 75100,
+              x = lubridate::as_date("2021-01-30"), 
+              label = "4-weeks before that", hjust=-0.05) +
+    annotate(geom = "rect",
+              ymax = 150000,
+              ymin = 0, 
+              xmin = lubridate::as_date(p1_min) - 0.5, 
+              xmax = lubridate::as_date(p1_max) + 0.5, 
+              fill = "#800020", 
+              alpha = 0.5) +
+    annotate(geom = "rect",
+              ymax = 150000,
+              ymin = 0, 
+              xmin = lubridate::as_date(p2_min) - 0.5, 
+              xmax = lubridate::as_date(p2_max) + 0.5, 
+              fill = "#FFD700", 
+              alpha = 0.5) +
+    geom_line(alpha = 0.8) + 
+    scale_color_aaas() +
+    theme(legend.position = "None") +
+    ylim(0,150000) +
+    labs(x = "Time (in weeks)", y = "Incident cases", 
+         title = "Incident cases in MA from 2021-11-01 to 2022-06-01")
+```
+
+Cases are **surging** if the last 4-weeks have been at least 50% worse than the 4 weeks before that where the incidence number of cases is at least 20 more more.
+
+An **upswing** is the week defining beginning of a surge period.
+
+## Defining surges and upswings {.smaller}
+
+New definition of **surge**
+
+::: .fragment
+```{r, echo=FALSE}
+f_col <- c("p1" = "#9F2B68", "yes" = "#FFD700", "p2" = "#800020")
+focal <- "2021-01-02"
+p1_min <- ymd("2020-12-05")
+p1_max <- ymd("2020-12-26")
+p2_min <- ymd("2021-01-09")
+p2_max <- ymd("2021-01-30")
+
+ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>% 
+           mutate(label = case_when(
+               time_value == focal ~ "yes", 
+               TRUE ~ "no"
+           )), 
+       aes(x = time_value, y = value)) + 
+    geom_point(aes(col = label)) +
+    annotate("segment", x = as_date("2021-05-01"), 
+             xend = as_date("2020-12-12"), 
+             y = 100000, yend = 75000, size = 0.5, 
+             arrow = arrow(length = unit(.1,"cm"))) +
+    annotate(geom = "text",
+              y = 100100,
+              x = lubridate::as_date("2021-05-01"), 
+              label = "4-weeks prior", hjust = -0.05) + 
+    annotate("segment", x = as_date("2021-03-15"), 
+             xend = as_date("2021-01-23"), 
+             y = 75000, yend = 50000, size = 0.5, 
+             arrow = arrow(length = unit(.1,"cm"))) +
+    annotate(geom = "text",
+              y = 75100,
+              x = lubridate::as_date("2021-03-15"), 
+              label = "4-weeks after", hjust=-0.05) +
+    annotate(geom = "rect",
+              ymax = 150000,
+              ymin = 0, 
+              xmin = lubridate::as_date(p1_min) - 0.5, 
+              xmax = lubridate::as_date(p1_max) + 0.5, 
+              fill = "#800020", 
+              alpha = 0.5) +
+    annotate(geom = "rect",
+              ymax = 150000,
+              ymin = 0, 
+              xmin = lubridate::as_date(p2_min) - 0.5, 
+              xmax = lubridate::as_date(p2_max) + 0.5, 
+              fill = "#FFD700", 
+              alpha = 0.5) +
+    geom_line(alpha = 0.8) + 
+    scale_color_aaas() +
+    theme(legend.position = "None") +
+    ylim(0,150000) +
+    labs(x = "Time (in weeks)", y = "Incident cases", 
+         title = "Incident cases in MA from 2021-11-01 to 2022-06-01")
+```
+:::
+
+::: {.fragment .fade-in-then-out}
+A 4-week ahead forecaster is a **nowcaster** for whether a week is currently in a surge. This can be computed easily from `epiprocess::growth_rate` using the `rel_change` method.
+:::
+
+::: {.fragment .fade-in-then-out}
+The equation for `rel_change` approach is $\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right)$ for a focal time $T$, with case counts $Y_{T}$ and bandwidth $h$ (in this case $h = 4$ representing a 4-week period used to define surges). We can manipulate this equation to be:
+
+$$
+\frac{1}{h} * \left(\frac{\bar{B}}{\bar{A}} - 1\right) = \frac{1}{h} * \left(\frac{\bar{B} - \bar{A}}{\bar{A}}\right) = \\ \frac{1}{h} * \left(\frac{(h)^{-1}\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{(h)^{-1}\sum_{t = T+1-h}^{T} Y_t}\right)
+$$
+
+Since the $h$-epiweek-incidence relative change is equal to
+
+$$
+\frac{\left(\sum_{t = T+1}^{T + h} Y_t - \sum_{t = T+1-h}^{T} Y_t\right)}{\sum_{t = T+1-h}^{T} Y_t}
+$$
+
+We can calculate the difference by multiplying the `growth_rate` estimate with the bandwidth $h$
+:::
+
+## Calculating surges from real data  {.smaller}
+
+```{r}
+
+```
+
+## Evaluating forecasters  {.smaller}
+
+## Predicting surges  {.smaller}
+
+## Predicting upswings  {.smaller}
+
+## Conclusions  {.smaller}
