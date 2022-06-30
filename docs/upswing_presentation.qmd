@@ -192,10 +192,10 @@ Previous definition of **surge**
 ```{r, echo=FALSE}
 f_col <- c("p1" = "#9F2B68", "yes" = "#FFD700", "p2" = "#800020")
 focal <- "2021-01-02"
-p1_min <- ymd("2020-11-07")
-p1_max <- ymd("2020-11-28")
-p2_min <- ymd("2020-12-05")
-p2_max <- ymd("2020-12-26")
+p1_min <- ymd("2020-11-14")
+p1_max <- ymd("2020-12-05")
+p2_min <- ymd("2020-12-12")
+p2_max <- ymd("2021-01-02")
 
 ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>% 
            mutate(label = case_when(
@@ -205,13 +205,13 @@ ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>%
        aes(x = time_value, y = value)) + 
     geom_point(aes(col = label)) +
     annotate("segment", x = as_date("2021-05-01"), 
-             xend = as_date("2020-12-12"), 
+             xend = as_date("2020-12-15"), 
              y = 100000, yend = 75000, size = 0.5, 
              arrow = arrow(length = unit(.1,"cm"))) +
     annotate(geom = "text",
               y = 100100,
               x = lubridate::as_date("2021-05-01"), 
-              label = "4-weeks prior", hjust = -0.05) + 
+              label = "Last 4-weeks", hjust = -0.05) + 
     annotate("segment", x = as_date("2021-01-30"), 
              xend = as_date("2020-11-21"), 
              y = 75000, yend = 50000, size = 0.5, 
@@ -253,8 +253,8 @@ New definition of **surge**
 ```{r, echo=FALSE}
 f_col <- c("p1" = "#9F2B68", "yes" = "#FFD700", "p2" = "#800020")
 focal <- "2021-01-02"
-p1_min <- ymd("2020-12-05")
-p1_max <- ymd("2020-12-26")
+p1_min <- ymd("2020-12-12")
+p1_max <- ymd("2021-01-02")
 p2_min <- ymd("2021-01-09")
 p2_max <- ymd("2021-01-30")
 
@@ -266,13 +266,13 @@ ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>%
        aes(x = time_value, y = value)) + 
     geom_point(aes(col = label)) +
     annotate("segment", x = as_date("2021-05-01"), 
-             xend = as_date("2020-12-12"), 
+             xend = as_date("2020-12-15"), 
              y = 100000, yend = 75000, size = 0.5, 
              arrow = arrow(length = unit(.1,"cm"))) +
     annotate(geom = "text",
               y = 100100,
               x = lubridate::as_date("2021-05-01"), 
-              label = "4-weeks prior", hjust = -0.05) + 
+              label = "Last 4-weeks", hjust = -0.05) + 
     annotate("segment", x = as_date("2021-03-15"), 
              xend = as_date("2021-01-23"), 
              y = 75000, yend = 50000, size = 0.5, 
@@ -280,7 +280,7 @@ ggplot(truth_epidf %>% ungroup() %>% filter(geo_value == "ma") %>%
     annotate(geom = "text",
               y = 75100,
               x = lubridate::as_date("2021-03-15"), 
-              label = "4-weeks after", hjust=-0.05) +
+              label = "4-weeks ahead", hjust=-0.05) +
     annotate(geom = "rect",
               ymax = 150000,
               ymin = 0, 
@@ -376,7 +376,7 @@ Take truth and forecast data from `covidHubUtils` with $h = 4$ as the bandwidth 
 ::: {.fragment .fade-in-then-out}
 This was done using `epiprocess::epi_slide`. Values are returned as `NA` if:
 
--   There are not enough dates, e.g. the sliding period contains 7 days instead of 8 days (at the beginning and end of the evaluation time period).
+-   There are not enough dates, e.g. the sliding period contains 7 weeks instead of 8 weeks (at the beginning and end of the evaluation time period).
 
 -   Requiring that forecasters need to have the complete $h$-week ahead forecast, and that the first horizon has to start at $T+1$
 
@@ -384,7 +384,7 @@ This was done using `epiprocess::epi_slide`. Values are returned as `NA` if:
 :::
 :::
 
-## Nowcasting surges  {.smaller}
+## Nowcasting surges {.smaller}
 
 ::: columns
 ::: {.column width="50%"}
@@ -532,28 +532,98 @@ eval_upswing %>% select(-type) %>%
 The `Never-Baseline` model predicts all periods as `FALSE` (no surges or upswings)
 :::
 
+## Looking closer at the models (surges) 
+
+`CovidAnalytics-DELPHI` for the state of Massachusetts
+
+```{r}
+#| fig-align: center
+mod_plot <- pred_gr_classif %>% filter(model == models[3]) 
+
+p1 <- ggplot(mod_plot %>% filter(geo_value == "ma"), 
+       aes(x = time_value, y = obs)) + geom_point(aes(col = surge)) + geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Surge classification from real data", y = "Incident cases") + theme(legend.position = "None")
+p2 <- ggplot(mod_plot %>% filter(geo_value == "ma"), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = surge_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Nowcasting surges", y = "Incident cases", col = "Surge")
+p1 / p2 + plot_layout(guides = "collect")
+```
+
+## Looking closer at the models (upswing) 
+
+`CovidAnalytics-DELPHI` for the state of Massachusetts
+
+```{r}
+#| fig-align: center
+mod_plot <- pred_gr_classif %>% filter(model == models[3]) 
+
+p1 <- ggplot(mod_plot %>% filter(geo_value == "ma"), 
+       aes(x = time_value, y = obs)) + geom_point(aes(col = upswing)) + geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Upswing classification from real data", y = "Incident cases") + theme(legend.position = "None")
+p2 <- ggplot(mod_plot %>% filter(geo_value == "ma"), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = upswing_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Nowcasting upswings", y = "Incident cases", col = "Upswing")
+p1 / p2 + plot_layout(guides = "collect")
+```
+
+## Looking closer at the models  (surges)
+
+`COVIDhub-4_week_ensemble` for the state of Massachusetts
+
+```{r}
+#| fig-align: center
+mod_plot <- pred_gr_classif %>% filter(model == models[5]) 
+
+p1 <- ggplot(mod_plot %>% filter(geo_value == "ma"), 
+       aes(x = time_value, y = obs)) + geom_point(aes(col = surge)) + geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Surge classification from real data", y = "Incident cases") + theme(legend.position = "None")
+p2 <- ggplot(mod_plot %>% filter(geo_value == "ma"), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = surge_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Nowcasting surges", y = "Incident cases", col = "Surge")
+p1 / p2 + plot_layout(guides = "collect")
+```
+
+## Looking closer at the models (upswings)
+
+`COVIDhub-4_week_ensemble` for the state of Massachusetts
+
+```{r}
+#| fig-align: center
+mod_plot <- pred_gr_classif %>% filter(model == models[5]) 
+
+p1 <- ggplot(mod_plot %>% filter(geo_value == "ma"), 
+       aes(x = time_value, y = obs)) + geom_point(aes(col = upswing)) + geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Upswing classification from real data", y = "Incident cases") + theme(legend.position = "None")
+p2 <- ggplot(mod_plot %>% filter(geo_value == "ma"), aes(x = time_value, y = obs)) + 
+    geom_point(aes(col = upswing_pred)) + 
+    geom_line(alpha = 0.5) + 
+    labs(x = "Week", title = "Nowcasting upswings", y = "Incident cases", col = "Upswing")
+p1 / p2 + plot_layout(guides = "collect")
+```
+
 ## Conclusions {.smaller}
 
 ::: incremental
--   Most forecasters are good at detecting surges overall but not good at detecting when a surge is an upswing.
+-   Most forecasters are good at detecting case surges overall but not good at detecting when a surge is an upswing.
 
 -   Misclassification rate is lower for predicting upswings is because the number of upswings are rare (0.04% of total weeks evaluated - \~200 events in total out of 5000 across all jurisdictions).
 :::
 
-::: r-stack
-::: {.fragment .fade-in-then-out}
-Future directions:
+## Future directions
 
--   Phase categories
+::: {.fragment fragment-index="1"}
+-   Phase categories in comparison to CDC
 :::
 
-![](images/Screen%20Shot%202022-03-21%20at%2012.13.11%20PM.png){.fragment .fade-in-then-out fig-align="left" width="347"}
+::: {.fragment fragment-index="3"}
+-   Downswing analysis and combine results with prior work on deaths.
 
-::: {.fragment .fade-in style="text-align: left"}
-Future directions:
-
--   Phase categories
-
--   Downswing analysis
+-   Improve classification process and train a forecaster that is better at predicting **upswings**.
 :::
+
+::: {.fragment .fade-in-then-out fragment-index="2"}
+![](images/Screen%20Shot%202022-03-21%20at%2012.13.11%20PM.png){fig-align="center" width="347"}
 :::
